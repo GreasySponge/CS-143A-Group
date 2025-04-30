@@ -1,6 +1,6 @@
 ### Fill in the following information before submitting
-# Group id: 
-# Members: 
+# Group id: 2
+# Members: Nathan Andrews, Drake Smith, Aditya Chakka
 
 
 
