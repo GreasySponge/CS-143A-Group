@@ -4,20 +4,72 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
-        
         {
-            "name": "FCFS",
+            "name": "ChangingPriority",
             "type": "debugpy",
             "request": "launch",
             "program": "simulator.py",
-            "args": "simulations/FCFS1.json output.txt"
+            "args": "simulations/ChangingPriority.json output/test_ChangingPriority.txt"
         },
         {
-            "name": "Priority",
+            "name": "FCFS1",
             "type": "debugpy",
             "request": "launch",
             "program": "simulator.py",
-            "args": "simulations/Priority1.json output.txt"
+            "args": "simulations/FCFS1.json output/test_FCFS1.txt"
+        },
+        {
+            "name": "FCFS2",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "simulator.py",
+            "args": "simulations/FCFS2.json output/test_FCFS2.txt"
+        },
+        {
+            "name": "FCFS3",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "simulator.py",
+            "args": "simulations/FCFS3.json output/test_FCFS3.txt"
+        },
+        {
+            "name": "Priority1",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "simulator.py",
+            "args": "simulations/Priority1.json output/test_Priority1.txt"
+        },
+        {
+            "name": "Priority2",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "simulator.py",
+            "args": "simulations/Priority2.json output/test_Priority2.txt"
+        },
+        {
+            "name": "SamePriorityIsFCFS",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "simulator.py",
+            "args": "simulations/SamePriorityIsFCFS.json output/test_SamePriorityIsFCFS.txt"
+        }
+    ],
+    "compounds": [
+        {
+            "name": "Run All",
+            "configurations": ["ChangingPriority", "FCFS1", "FCFS2", "FCFS3", 
+                "Priority1", "Priority2", "SamePriorityIsFCFS"],
+            "stopAll": true
+        },
+        {
+            "name": "Run FCFS",
+            "configurations": ["FCFS1", "FCFS2", "FCFS3"],
+            "stopAll": true
+        },
+        {
+            "name": "Run Priority",
+            "configurations": ["Priority1", "Priority2", "SamePriorityIsFCFS", "ChangingPriority"],
+            "stopAll": true
         }
     ]
 }
