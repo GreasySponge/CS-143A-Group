@@ -95,9 +95,11 @@ class Kernel:
     # DO NOT rename or delete this method. DO NOT change its arguments.
     def new_process_arrived(self, new_process: PID, priority: int) -> PID:
         print(f"New process {new_process} with priority {priority} arrived.")
+        new_pcb = PCB(new_process, priority)
         match self.scheduling_algorithm:
             case Scheduling_Algorithm.FCFS:
-                self.ready_queue.append(PCB(new_process, priority))
+                print(f"Adding process {new_process} to ready queue.")
+                self.ready_queue.append(new_pcb)
                 if self.is_idle():
                     print("Idle process running, choosing new process.")
                     return self.choose_next_process()
@@ -105,9 +107,13 @@ class Kernel:
                     print("Idle process not running, continuing process.")
                     return self.running.pid
             case Scheduling_Algorithm.PRIORITY:
-                self.priority_queue.put(PCB(new_process, priority))
-                self.priority_queue.put(self.running)
-                return self.choose_next_process()
+                if priority < self.running.priority:
+                    print(f"new process {new_process} has higher priority than running process {self.running}, running new process.")
+                    self.priority_queue.put(self.running)
+                    self.running = new_pcb
+                else:
+                    self.priority_queue.put(new_pcb)
+                return self.running.pid
     # This method is triggered every time the current process performs an exit syscall.
     # DO NOT rename or delete this method. DO NOT change its arguments.
     def syscall_exit(self) -> PID:
@@ -123,8 +129,11 @@ class Kernel:
         print(f"Process {str(self.running)} set priority to {new_priority}")
         self.exiting = False
         self.running.priority = new_priority
-        self.priority_queue.put(self.running)
-        return self.choose_next_process()
+        if self.priority_queue.queue[0].priority < self.running.priority:
+            print(f"Process {str(self.running)} has lower priority than process {self.priority_queue.queue[0]}")
+            self.priority_queue.put(self.running)
+            self.running = self.priority_queue.get()
+        return self.running.pid
 
     def choose_next_process(self) -> PID:
         print("Choosing next process to run.")
@@ -134,7 +143,7 @@ class Kernel:
                     print("No processes in ready queue, running idle.")
                     self.running = self.idle_pcb
                 else:
-                    print("Choosing next process from ready queue.")
+                    print("choosing from ready queue.")
                     print(f"rq: {self.ready_queue}")
                     self.running = self.ready_queue.popleft()
             case Scheduling_Algorithm.PRIORITY:
@@ -142,7 +151,7 @@ class Kernel:
                     print("No processes in priority queue, running idle.")
                     self.running = self.idle_pcb
                 else:
-                    print("Choosing next process from priority queue.")
+                    print("choosing from priority queue.")
                     print(f"pq: {self.priority_queue.queue}")
                     print(f"choosing {self.priority_queue.queue[0]}")
                     self.running = self.priority_queue.get()
