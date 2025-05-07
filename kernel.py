@@ -29,10 +29,20 @@ class PCB:
         if isinstance(other, PCB):
             return self.priority < other.priority
         return False
+    def __le__(self, other):
+        if isinstance(other, PCB):
+            return self.priority <= other.priority
+        return False
     def __gt__(self, other):
         if isinstance(other, PCB):
             return self.priority > other.priority
         return False
+    def __ge__(self, other):
+        if isinstance(other, PCB):
+            return self.priority >= other.priority
+        return False
+    def __repr__(self) -> str:
+        return f"PCB(pid: {self.pid}, priority: {self.priority})"
 
 @e.unique
 class Scheduling_Algorithm(e.Enum):
@@ -68,15 +78,13 @@ class Kernel:
     # Use this method to initilize any variables you need throughout the simulation.
     # DO NOT rename or delete this method. DO NOT change its arguments.
     def __init__(self, scheduling_algorithm: str):
-        # changed scheduling algorithm to enum
-        self.scheduling_algorithm = Scheduling_Algorithm.from_string(scheduling_algorithm)
         self.ready_queue = c.deque()
         self.waiting_queue = c.deque()
-        # changed PCB to have priority inside
         self.idle_pcb = PCB(0, sys.maxsize)
         self.running = self.idle_pcb
 
         # Student Defined:
+        self.scheduling_algorithm = Scheduling_Algorithm.from_string(scheduling_algorithm)
         self.priority_queue = q.PriorityQueue()
         self.exiting = False
         directory: p.Path = p.Path("output")
@@ -87,25 +95,31 @@ class Kernel:
     # DO NOT rename or delete this method. DO NOT change its arguments.
     def new_process_arrived(self, new_process: PID, priority: int) -> PID:
         print(f"New process {new_process} with priority {priority} arrived.")
+        new_pcb = PCB(new_process, priority)
         match self.scheduling_algorithm:
             case Scheduling_Algorithm.FCFS:
-                self.ready_queue.append(PCB(new_process, priority))
-                if self.running == self.idle_pcb:
+                print(f"Adding process {new_process} to ready queue.")
+                self.ready_queue.append(new_pcb)
+                if self.is_idle():
                     print("Idle process running, choosing new process.")
                     return self.choose_next_process()
                 else:
                     print("Idle process not running, continuing process.")
                     return self.running.pid
             case Scheduling_Algorithm.PRIORITY:
-                self.priority_queue.put(PCB(new_process, priority))
-                self.exiting = False
-                return self.choose_next_process()
+                if priority < self.running.priority:
+                    print(f"new process {new_process} has higher priority than running process {self.running}, running new process.")
+                    self.priority_queue.put(self.running)
+                    self.running = new_pcb
+                else:
+                    self.priority_queue.put(new_pcb)
+                return self.running.pid
     # This method is triggered every time the current process performs an exit syscall.
     # DO NOT rename or delete this method. DO NOT change its arguments.
     def syscall_exit(self) -> PID:
         print(f"Process {str(self.running)} exited.")
         self.exiting = True
-        if self.running != self.idle_pcb:
+        if not self.is_idle():
             return self.choose_next_process()
         return self.idle_pcb.pid
 
@@ -115,13 +129,12 @@ class Kernel:
         print(f"Process {str(self.running)} set priority to {new_priority}")
         self.exiting = False
         self.running.priority = new_priority
-        return self.choose_next_process()
+        if self.priority_queue.queue[0].priority < self.running.priority:
+            print(f"Process {str(self.running)} has lower priority than process {self.priority_queue.queue[0]}")
+            self.priority_queue.put(self.running)
+            self.running = self.priority_queue.get()
+        return self.running.pid
 
-
-    # This is where you can select the next process to run.
-    # This method is not directly called by the simulator and is purely for your convinience.
-    # Feel free to modify this method as you see fit.
-    # It is not required to actually use this method but it is recommended.
     def choose_next_process(self) -> PID:
         print("Choosing next process to run.")
         match self.scheduling_algorithm:
@@ -129,20 +142,20 @@ class Kernel:
                 if len(self.ready_queue) == 0:
                     print("No processes in ready queue, running idle.")
                     self.running = self.idle_pcb
-                else :
-                    print("Choosing next process from ready queue.")
+                else:
+                    print("choosing from ready queue.")
                     print(f"rq: {self.ready_queue}")
                     self.running = self.ready_queue.popleft()
             case Scheduling_Algorithm.PRIORITY:
-                if self.priority_queue.empty() :
+                if self.priority_queue.empty():
                     print("No processes in priority queue, running idle.")
                     self.running = self.idle_pcb
-                else :
-                    print("Choosing next process from priority queue.")
+                else:
+                    print("choosing from priority queue.")
                     print(f"pq: {self.priority_queue.queue}")
-                    if not self.exiting and self.running != self.idle_pcb:
-                        self.priority_queue.put(self.running)
+                    print(f"choosing {self.priority_queue.queue[0]}")
                     self.running = self.priority_queue.get()
-        print(f"Next process to run: {str(self.running)}")
         return self.running.pid
-
+                
+    def is_idle(self) -> bool:
+        return self.running == self.idle_pcb
