@@ -105,7 +105,9 @@ class Kernel:
     def syscall_exit(self) -> PID:
         print(f"Process {str(self.running)} exited.")
         self.exiting = True
-        return self.choose_next_process()
+        if self.running != self.idle_pcb:
+            return self.choose_next_process()
+        return self.idle_pcb.pid
 
     # This method is triggered when the currently running process requests to change its priority.
     # DO NOT rename or delete this method. DO NOT change its arguments.
@@ -122,20 +124,25 @@ class Kernel:
     # It is not required to actually use this method but it is recommended.
     def choose_next_process(self) -> PID:
         print("Choosing next process to run.")
-        if len(self.ready_queue) == 0 and len(self.priority_queue.queue) == 0:
-            print("No processes in ready queue or priority queue, running idle.")
-            return self.idle_pcb.pid
         match self.scheduling_algorithm:
             case Scheduling_Algorithm.FCFS:
-                print("Choosing next process from ready queue.")
-                print(f"rq: {self.ready_queue}")
-                self.running = self.ready_queue.popleft()
+                if len(self.ready_queue) == 0:
+                    print("No processes in ready queue, running idle.")
+                    self.running = self.idle_pcb
+                else :
+                    print("Choosing next process from ready queue.")
+                    print(f"rq: {self.ready_queue}")
+                    self.running = self.ready_queue.popleft()
             case Scheduling_Algorithm.PRIORITY:
-                print("Choosing next process from priority queue.")
-                print(f"pq: {self.priority_queue.queue}")
-                if not self.exiting and self.running != self.idle_pcb:
-                    self.priority_queue.put(self.running)
-                self.running = self.priority_queue.get()
+                if self.priority_queue.empty() :
+                    print("No processes in priority queue, running idle.")
+                    self.running = self.idle_pcb
+                else :
+                    print("Choosing next process from priority queue.")
+                    print(f"pq: {self.priority_queue.queue}")
+                    if not self.exiting and self.running != self.idle_pcb:
+                        self.priority_queue.put(self.running)
+                    self.running = self.priority_queue.get()
         print(f"Next process to run: {str(self.running)}")
         return self.running.pid
 
