@@ -1,5 +1,5 @@
 {
-    "scheduling_algorithm": "FCFS",
+    "scheduling_algorithm": "RR",
     "processes": [
         {
             "arrival": 0,
@@ -7,11 +7,15 @@
         },
         {
             "arrival": 23,
-            "total_cpu_time": 63
+            "total_cpu_time": 444
+        },
+        {
+            "arrival": 553,
+            "total_cpu_time": 311
         },
         {
             "arrival": 1000,
-            "total_cpu_time": 60
+            "total_cpu_time": 240
         },
         {
             "arrival": 1023,
@@ -23,7 +27,15 @@
         },
         {
             "arrival": 1400,
-            "total_cpu_time": 332
+            "total_cpu_time": 132
+        },
+        {
+            "arrival": 2532,
+            "total_cpu_time": 233
+        },
+        {
+            "arrival": 2533,
+            "total_cpu_time": 111
         }
     ]
 }
