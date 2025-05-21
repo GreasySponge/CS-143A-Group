@@ -77,7 +77,7 @@ class Kernel:
     # Called before the simulation begins.
     # Use this method to initilize any variables you need throughout the simulation.
     # DO NOT rename or delete this method. DO NOT change its arguments.
-    def __init__(self, scheduling_algorithm: str):
+    def __init__(self, scheduling_algorithm: str, logger):
         self.ready_queue = c.deque()
         self.waiting_queue = c.deque()
         self.idle_pcb = PCB(0, sys.maxsize)
@@ -93,22 +93,22 @@ class Kernel:
     # new_process is this process's PID.
     # priority is the priority of new_process.
     # DO NOT rename or delete this method. DO NOT change its arguments.
-    def new_process_arrived(self, new_process: PID, priority: int) -> PID:
-        print(f"New process {new_process} with priority {priority} arrived.")
+    def new_process_arrived(self, new_process: PID, priority: int, process_type: str) -> PID:
+        self.logger.log(f"New process {new_process} with priority {priority} arrived.")
         new_pcb = PCB(new_process, priority)
         match self.scheduling_algorithm:
             case Scheduling_Algorithm.FCFS:
-                print(f"Adding process {new_process} to ready queue.")
+                self.logger.log(f"Adding process {new_process} to ready queue.")
                 self.ready_queue.append(new_pcb)
                 if self.is_idle():
-                    print("Idle process running, choosing new process.")
+                    self.logger.log("Idle process running, choosing new process.")
                     return self.choose_next_process()
                 else:
-                    print("Idle process not running, continuing process.")
+                    self.logger.log("Idle process not running, continuing process.")
                     return self.running.pid
             case Scheduling_Algorithm.PRIORITY:
                 if priority < self.running.priority:
-                    print(f"new process {new_process} has higher priority than running process {self.running}, running new process.")
+                    self.logger.log(f"new process {new_process} has higher priority than running process {self.running}, running new process.")
                     self.priority_queue.put(self.running)
                     self.running = new_pcb
                 else:
@@ -117,7 +117,7 @@ class Kernel:
     # This method is triggered every time the current process performs an exit syscall.
     # DO NOT rename or delete this method. DO NOT change its arguments.
     def syscall_exit(self) -> PID:
-        print(f"Process {str(self.running)} exited.")
+        self.logger.log(f"Process {str(self.running)} exited.")
         self.exiting = True
         if not self.is_idle():
             return self.choose_next_process()
@@ -126,36 +126,74 @@ class Kernel:
     # This method is triggered when the currently running process requests to change its priority.
     # DO NOT rename or delete this method. DO NOT change its arguments.
     def syscall_set_priority(self, new_priority: int) -> PID:
-        print(f"Process {str(self.running)} set priority to {new_priority}")
+        self.logger.log(f"Process {str(self.running)} set priority to {new_priority}")
         self.exiting = False
         self.running.priority = new_priority
         if self.priority_queue.queue[0].priority < self.running.priority:
-            print(f"Process {str(self.running)} has lower priority than process {self.priority_queue.queue[0]}")
+            self.logger.log(f"Process {str(self.running)} has lower priority than process {self.priority_queue.queue[0]}")
             self.priority_queue.put(self.running)
             self.running = self.priority_queue.get()
         return self.running.pid
 
     def choose_next_process(self) -> PID:
-        print("Choosing next process to run.")
+        self.logger.log("Choosing next process to run.")
         match self.scheduling_algorithm:
             case Scheduling_Algorithm.FCFS:
                 if len(self.ready_queue) == 0:
-                    print("No processes in ready queue, running idle.")
+                    self.logger.log("No processes in ready queue, running idle.")
                     self.running = self.idle_pcb
                 else:
-                    print("choosing from ready queue.")
-                    print(f"rq: {self.ready_queue}")
+                    self.logger.log("choosing from ready queue.")
+                    self.logger.log(f"rq: {self.ready_queue}")
                     self.running = self.ready_queue.popleft()
             case Scheduling_Algorithm.PRIORITY:
                 if self.priority_queue.empty():
-                    print("No processes in priority queue, running idle.")
+                    self.logger.log("No processes in priority queue, running idle.")
                     self.running = self.idle_pcb
                 else:
-                    print("choosing from priority queue.")
-                    print(f"pq: {self.priority_queue.queue}")
-                    print(f"choosing {self.priority_queue.queue[0]}")
+                    self.logger.log("choosing from priority queue.")
+                    self.logger.log(f"pq: {self.priority_queue.queue}")
+                    self.logger.log(f"choosing {self.priority_queue.queue[0]}")
                     self.running = self.priority_queue.get()
         return self.running.pid
                 
     def is_idle(self) -> bool:
         return self.running == self.idle_pcb
+    
+    # This method is triggered when the currently running process requests to initialize a new semaphore.
+	# DO NOT rename or delete this method. DO NOT change its arguments.
+	def syscall_init_semaphore(self, semaphore_id: int, initial_value: int):
+    		return
+    
+	# This method is triggered when the currently running process calls p() on an existing semaphore.
+	# DO NOT rename or delete this method. DO NOT change its arguments.
+	def syscall_semaphore_p(self, semaphore_id: int) -> PID:
+    		return self.running.pid
+
+	# This method is triggered when the currently running process calls v() on an existing semaphore.
+	# DO NOT rename or delete this method. DO NOT change its arguments.
+	def syscall_semaphore_v(self, semaphore_id: int) -> PID:
+    		return self.running.pid
+
+	# This method is triggered when the currently running process requests to initialize a new mutex.
+	# DO NOT rename or delete this method. DO NOT change its arguments.
+	def syscall_init_mutex(self, mutex_id: int):
+    		return
+
+	# This method is triggered when the currently running process calls lock() on an existing mutex.
+	# DO NOT rename or delete this method. DO NOT change its arguments.
+	def syscall_mutex_lock(self, mutex_id: int) -> PID:
+    		return self.running.pid
+
+
+	# This method is triggered when the currently running process calls unlock() on an existing mutex.
+	# DO NOT rename or delete this method. DO NOT change its arguments.
+	def syscall_mutex_unlock(self, mutex_id: int) -> PID:
+    		return self.running.pid
+
+	# This function represents the hardware timer interrupt.
+	# It is triggered every 10 microseconds and is the only way a kernel can track passing time.
+	# Do not use real time to track how much time has passed as time is simulated.
+	# DO NOT rename or delete this method. DO NOT change its arguments.
+	def timer_interrupt(self) -> PID:
+    		return self.running.pid
