@@ -3,6 +3,12 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "GetDiffs",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "diff_testing.py",
+        },
+        {
             "name": "Multilevel1",
             "type": "debugpy",
             "request": "launch",
