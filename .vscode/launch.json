@@ -3,71 +3,141 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "ChangingPriority",
+            "name": "Multilevel1",
             "type": "debugpy",
             "request": "launch",
             "program": "simulator.py",
-            "args": "simulations/ChangingPriority.json output/test_ChangingPriority.txt"
+            "args": "simulations/Multilevel1.json output/test_Multilevel1.txt"
         },
         {
-            "name": "FCFS1",
+            "name": "Multilevel2",
             "type": "debugpy",
             "request": "launch",
             "program": "simulator.py",
-            "args": "simulations/FCFS1.json output/test_FCFS1.txt"
+            "args": "simulations/Multilevel2.json output/test_Multilevel2.txt"
         },
         {
-            "name": "FCFS2",
+            "name": "Multilevel3",
             "type": "debugpy",
             "request": "launch",
             "program": "simulator.py",
-            "args": "simulations/FCFS2.json output/test_FCFS2.txt"
+            "args": "simulations/Multilevel3.json output/test_Multilevel3.txt"
         },
         {
-            "name": "FCFS3",
+            "name": "MultipleMutexes",
             "type": "debugpy",
             "request": "launch",
             "program": "simulator.py",
-            "args": "simulations/FCFS3.json output/test_FCFS3.txt"
+            "args": "simulations/MultipleMutexes.json output/test_MultipleMutexes.txt"
         },
         {
-            "name": "Priority1",
+            "name": "MultipleSemaphores",
             "type": "debugpy",
             "request": "launch",
             "program": "simulator.py",
-            "args": "simulations/Priority1.json output/test_Priority1.txt"
+            "args": "simulations/MultipleSemaphores.json output/test_MultipleSemaphores.txt"
         },
         {
-            "name": "Priority2",
+            "name": "Mutex1",
             "type": "debugpy",
             "request": "launch",
             "program": "simulator.py",
-            "args": "simulations/Priority2.json output/test_Priority2.txt"
+            "args": "simulations/Mutex1.json output/test_Mutex1.txt"
         },
         {
-            "name": "SamePriorityIsFCFS",
+            "name": "Mutex2",
             "type": "debugpy",
             "request": "launch",
             "program": "simulator.py",
-            "args": "simulations/SamePriorityIsFCFS.json output/test_SamePriorityIsFCFS.txt"
-        }
+            "args": "simulations/Mutex2.json output/test_Mutex2.txt"
+        },
+        {
+            "name": "MutexRR1",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "simulator.py",
+            "args": "simulations/MutexRR1.json output/test_MutexRR1.txt"
+        },
+                {
+            "name": "MutexRR2",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "simulator.py",
+            "args": "simulations/MutexRR2.json output/test_MutexRR2.txt"
+        },
+        {
+            "name": "RR1",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "simulator.py",
+            "args": "simulations/RR1.json output/test_RR1.txt"
+        },
+        {
+            "name": "RR2",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "simulator.py",
+            "args": "simulations/RR2.json output/test_RR2.txt"
+        },
+        {
+            "name": "Semaphore1",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "simulator.py",
+            "args": "simulations/Semaphore1.json output/test_Semaphore1.txt"
+        },
+        {
+            "name": "Semaphore2",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "simulator.py",
+            "args": "simulations/Semaphore2.json output/test_Semaphore2.txt"
+        },
+        {
+            "name": "Semaphore3",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "simulator.py",
+            "args": "simulations/Semaphore3.json output/test_Semaphore3.txt"
+        },
+        {
+            "name": "SemaphoreFCFS3",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "simulator.py",
+            "args": "simulations/SemaphoreFCFS3.json output/test_SemaphoreFCFS3.txt"
+        },
+        {
+            "name": "SemaphoreRR1",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "simulator.py",
+            "args": "simulations/SemaphoreRR1.json output/test_SemaphoreRR1.txt"
+        },
+        {
+            "name": "SemaphoreRR2",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "simulator.py",
+            "args": "simulations/SemaphoreRR2.json output/test_SemaphoreRR2.txt"
+        },
     ],
     "compounds": [
         {
-            "name": "Run All",
-            "configurations": ["ChangingPriority", "FCFS1", "FCFS2", "FCFS3", 
-                "Priority1", "Priority2", "SamePriorityIsFCFS"],
+            "name": "Run All Multi-Level",
+            "configurations": ["Multilevel1", "Multilevel2", "Multilevel3"],
             "stopAll": true
         },
         {
-            "name": "Run FCFS",
-            "configurations": ["FCFS1", "FCFS2", "FCFS3"],
+            "name": "Run All RR",
+            "configurations": ["MultipleMutexes", "MultipleSemaphores", "MutexRR1", 
+                "MutexRR2", "RR1", "RR2", "SemaphoreRR1", "SemaphoreRR2"],
             "stopAll": true
         },
         {
-            "name": "Run Priority",
-            "configurations": ["Priority1", "Priority2", "SamePriorityIsFCFS", "ChangingPriority"],
+            "name": "Run Mutex and Semaphore (Priority)",
+            "configurations": ["Mutex1", "Mutex2", "Semaphore1", "Semaphore2", "Semaphore3"],
             "stopAll": true
-        }
+        },
     ]
 }
