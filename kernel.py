@@ -234,7 +234,7 @@ class Kernel:
         return
 
     # This method is triggered when the currently running process calls lock() on an existing mutex.
-    # DO NOT rename or delete this method. DO NOT change its  arguments.
+    # DO NOT rename or delete this method. DO NOT change its arguments.
     def syscall_mutex_lock(self, mutex_id: int) -> PID:
         return self.running.pid
 
