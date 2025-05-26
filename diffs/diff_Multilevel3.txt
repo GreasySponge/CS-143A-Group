@@ -1,64 +1,41 @@
 --- Multilevel3.txt
 +++ test_Multilevel3.txt
-@@ -5,22 +5,24 @@
+@@ -10,17 +10,17 @@
+ 0.234ms : Process 2 has finished execution and is exiting
+ 0.234ms : Context switching to pid: 1
  
- 0.153ms : Background process 3 arrived with priority 32
- 
--0.200ms : Context switching to pid: 2
-+0.160ms : Context switching to pid: 2
- 
--0.234ms : Process 2 has finished execution and is exiting
--0.234ms : Context switching to pid: 1
-+0.194ms : Process 2 has finished execution and is exiting
-+0.194ms : Context switching to pid: 1
++0.430ms : Context switching to pid: 3
 +
-+0.200ms : Context switching to pid: 3
-+
-+0.312ms : Process 3 has finished execution and is exiting
-+0.312ms : Context switching to pid: 1
- 
  0.511ms : Foreground process 4 arrived with priority 32
  
 -0.578ms : Process 1 has finished execution and is exiting
 -0.578ms : Context switching to pid: 3
-+0.600ms : Context switching to pid: 4
++0.542ms : Process 3 has finished execution and is exiting
++0.542ms : Context switching to pid: 1
  
 -0.630ms : Context switching to pid: 4
-+0.700ms : Process 4 has finished execution and is exiting
-+0.700ms : Context switching to pid: 1
++0.690ms : Process 1 has finished execution and is exiting
++0.690ms : Context switching to pid: 4
  
 -0.730ms : Process 4 has finished execution and is exiting
 -0.730ms : Context switching to pid: 3
 -
 -0.790ms : Process 3 has finished execution and is exiting
-+0.790ms : Process 1 has finished execution and is exiting
++0.790ms : Process 4 has finished execution and is exiting
  0.790ms : Context switching to pid: 0
  
  0.855ms : Foreground process 5 arrived with priority 32
-@@ -42,14 +44,20 @@
+@@ -42,10 +42,10 @@
  
  1.300ms : Foreground process 9 arrived with priority 32
  
 -1.430ms : Context switching to pid: 9
-+1.310ms : Context switching to pid: 9
++1.390ms : Context switching to pid: 9
  
 -1.471ms : Process 9 has finished execution and is exiting
 -1.471ms : Context switching to pid: 7
-+1.350ms : Context switching to pid: 7
++1.431ms : Process 9 has finished execution and is exiting
++1.431ms : Context switching to pid: 7
  
--1.484ms : Process 7 has finished execution and is exiting
--1.484ms : Context switching to pid: 8
-+1.390ms : Context switching to pid: 9
- 
--1.539ms : Process 8 has finished execution and is exiting
-+1.391ms : Process 9 has finished execution and is exiting
-+1.391ms : Context switching to pid: 7
-+
-+1.400ms : Context switching to pid: 8
-+
-+1.455ms : Process 8 has finished execution and is exiting
-+1.455ms : Context switching to pid: 7
-+
-+1.539ms : Process 7 has finished execution and is exiting
- 1.539ms : Context switching to pid: 0
- 
+ 1.484ms : Process 7 has finished execution and is exiting
+ 1.484ms : Context switching to pid: 8
