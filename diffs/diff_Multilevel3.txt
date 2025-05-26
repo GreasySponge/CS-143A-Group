@@ -1,14 +1,21 @@
 --- Multilevel3.txt
 +++ test_Multilevel3.txt
-@@ -8,19 +8,19 @@
- 0.200ms : Context switching to pid: 2
+@@ -5,22 +5,24 @@
  
- 0.234ms : Process 2 has finished execution and is exiting
+ 0.153ms : Background process 3 arrived with priority 32
+ 
+-0.200ms : Context switching to pid: 2
++0.160ms : Context switching to pid: 2
+ 
+-0.234ms : Process 2 has finished execution and is exiting
 -0.234ms : Context switching to pid: 1
-+0.234ms : Context switching to pid: 3
++0.194ms : Process 2 has finished execution and is exiting
++0.194ms : Context switching to pid: 1
 +
-+0.346ms : Process 3 has finished execution and is exiting
-+0.346ms : Context switching to pid: 1
++0.200ms : Context switching to pid: 3
++
++0.312ms : Process 3 has finished execution and is exiting
++0.312ms : Context switching to pid: 1
  
  0.511ms : Foreground process 4 arrived with priority 32
  
@@ -28,24 +35,30 @@
  0.790ms : Context switching to pid: 0
  
  0.855ms : Foreground process 5 arrived with priority 32
-@@ -42,14 +42,14 @@
+@@ -42,14 +44,20 @@
  
  1.300ms : Foreground process 9 arrived with priority 32
  
 -1.430ms : Context switching to pid: 9
-+1.400ms : Context switching to pid: 9
++1.310ms : Context switching to pid: 9
  
 -1.471ms : Process 9 has finished execution and is exiting
 -1.471ms : Context switching to pid: 7
-+1.441ms : Process 9 has finished execution and is exiting
-+1.441ms : Context switching to pid: 8
++1.350ms : Context switching to pid: 7
  
 -1.484ms : Process 7 has finished execution and is exiting
 -1.484ms : Context switching to pid: 8
-+1.496ms : Process 8 has finished execution and is exiting
-+1.496ms : Context switching to pid: 7
++1.390ms : Context switching to pid: 9
  
 -1.539ms : Process 8 has finished execution and is exiting
++1.391ms : Process 9 has finished execution and is exiting
++1.391ms : Context switching to pid: 7
++
++1.400ms : Context switching to pid: 8
++
++1.455ms : Process 8 has finished execution and is exiting
++1.455ms : Context switching to pid: 7
++
 +1.539ms : Process 7 has finished execution and is exiting
  1.539ms : Context switching to pid: 0
  
