@@ -109,6 +109,10 @@ class Kernel:
         output_dir: p.Path = p.Path("output")
         output_dir.mkdir(parents=True, exist_ok=True)
         self.interrupt_counter = 0
+    
+    def is_idle(self) -> bool:
+        return self.running == self.idle_pcb
+    
     # This method is triggered every time a new process has arrived.
     # new_process is this process's PID.
     # priority is the priority of new_process.
@@ -153,6 +157,7 @@ class Kernel:
                     self.background_queue.append(new_pcb)
                 else:
                     raise ValueError(f"Improper process type {process_type}")
+                
                 if self.is_idle():
                     return self.choose_next_process()
                 else: 
@@ -255,10 +260,7 @@ class Kernel:
                 return self.running.pid
                                 
         return self.running.pid
-                
-    def is_idle(self) -> bool:
-        return self.running == self.idle_pcb
-    
+                    
     # This method is triggered when the currently running process requests to initialize a new semaphore.
     # DO NOT rename or delete this method. DO NOT change its arguments.
     def syscall_init_semaphore(self, semaphore_id: int, initial_value: int):
@@ -297,37 +299,38 @@ class Kernel:
     def timer_interrupt(self) -> PID:
         # keeps an interrupt counter to track when to change processes
         # self.logger.log("timer interrupt")
-        if self.scheduling_algorithm == Scheduling_Algorithm.ROUND_ROBIN:
-            self.interrupt_counter += 1
-            if self.interrupt_counter == 4:
-                self.ready_queue.append(self.running)
-                return self.choose_next_process()
-
-        elif self.scheduling_algorithm == Scheduling_Algorithm.MULTI_LEVEL:
-            self.current_time += 1
-
-            if self.current_level == "Foreground":
-                if self.current_time >= 20:
-                    self.current_time = 0
-                    self.interrupt_counter = 0
-                    if not self.exiting and self.running != self.idle_pcb and self.running.process_type == "Foreground":
-                        self.foreground_queue.append(self.running)
-                    self.current_level = "Background"
-                    return self.choose_next_process()
-
+        match self.scheduling_algorithm:
+            case Scheduling_Algorithm.ROUND_ROBIN:
                 self.interrupt_counter += 1
                 if self.interrupt_counter == 4:
-                    self.interrupt_counter = 0
-                    if not self.exiting:
-                        self.foreground_queue.append(self.running)
+                    self.ready_queue.append(self.running)
                     return self.choose_next_process()
 
-            elif self.current_level == "Background":
-                if self.current_time >= 20:
-                    self.current_time = 0
-                    if not self.exiting and self.running != self.idle_pcb and self.running.process_type == "Background":
-                        self.background_queue.append(self.running)
-                    self.current_level = "Foreground"
-                    return self.choose_next_process()
+            case Scheduling_Algorithm.MULTI_LEVEL:
+                self.current_time += 1
+
+                if self.current_level == "Foreground":
+                    if self.current_time >= 20:
+                        self.current_time = 0
+                        self.interrupt_counter = 0
+                        if not self.exiting and self.running != self.idle_pcb and self.running.process_type == "Foreground":
+                            self.foreground_queue.append(self.running)
+                        self.current_level = "Background"
+                        return self.choose_next_process()
+
+                    self.interrupt_counter += 1
+                    if self.interrupt_counter == 4:
+                        self.interrupt_counter = 0
+                        if not self.exiting:
+                            self.foreground_queue.append(self.running)
+                        return self.choose_next_process()
+
+                elif self.current_level == "Background":
+                    if self.current_time >= 20:
+                        self.current_time = 0
+                        if not self.exiting and self.running != self.idle_pcb and self.running.process_type == "Background":
+                            self.background_queue.append(self.running)
+                        self.current_level = "Foreground"
+                        return self.choose_next_process()
 
         return self.running.pid
