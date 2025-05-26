@@ -1,6 +1,6 @@
 # Fill in the following information before submitting
 # Group id: 2
-# Members: Nathan Andrews, Drake Smith, Aditya Chakka
+# Members: Nathan Andrews, Drake Smith, Aditya Chakkai
 
 import collections as c
 import pathlib as p
@@ -35,21 +35,31 @@ class PCB:
 
     def __lt__(self, other):
         if isinstance(other, PCB):
+            # Lower priority number = higher priority
+            # Use PID as tiebreaker
+            if self.priority == other.priority:
+                return self.pid < other.pid
             return self.priority < other.priority
         return False
 
     def __le__(self, other):
         if isinstance(other, PCB):
+            if self.priority == other.priority:
+                return self.pid <= other.pid
             return self.priority <= other.priority
         return False
 
     def __gt__(self, other):
         if isinstance(other, PCB):
+            if self.priority == other.priority:
+                return self.pid > other.pid
             return self.priority > other.priority
         return False
 
     def __ge__(self, other):
         if isinstance(other, PCB):
+            if self.priority == other.priority:
+                return self.pid >= other.pid
             return self.priority >= other.priority
         return False
 
@@ -92,7 +102,6 @@ class Kernel:
     waiting_queue: c.deque[PCB]
     running: PCB
     idle_pcb: PCB
-
     priority_queue: q.PriorityQueue[PCB]
     exiting: bool
 
@@ -114,7 +123,6 @@ class Kernel:
         output_dir: p.Path = p.Path("output")
         output_dir.mkdir(parents=True, exist_ok=True)
         self.interrupt_counter = 0
-
         self.semaphores = {}
         self.mutexes = {}
 
@@ -122,38 +130,37 @@ class Kernel:
     # new_process is this process's PID.
     # priority is the priority of new_process.
     # DO NOT rename or delete this method. DO NOT change its arguments.
-
     def new_process_arrived(self, new_process: PID, priority: int, process_type: str) -> PID:
-        # self.logger.log(f"New process {new_process} with priority {priority} arrived.")
         new_pcb = PCB(new_process, priority, process_type)
+
         match self.scheduling_algorithm:
             case Scheduling_Algorithm.FIRST_COME_FIRST_SERVE:
-                # self.logger.log(f"Adding process {new_process} to ready queue.")
                 self.ready_queue.append(new_pcb)
                 if self.is_idle():
-                    # self.logger.log("Idle process running, choosing new process.")
                     return self.choose_next_process()
                 else:
-                    # self.logger.log("Idle process not running, continuing process.")
                     return self.running.pid
 
             case Scheduling_Algorithm.PRIORITY:
-                if priority < self.running.priority:
-                    # self.logger.log(f"new process {new_process} has higher priority than running process {self.running}, running new process.")
+                if self.is_idle():
+                    self.running = new_pcb
+                    return self.running.pid
+
+                # Only preempt if new process has STRICTLY higher priority (lower number)
+                if new_pcb.priority < self.running.priority:
                     self.priority_queue.put(self.running)
                     self.running = new_pcb
+                    return new_pcb.pid
                 else:
+                    # New process has lower or equal priority - add to queue
                     self.priority_queue.put(new_pcb)
-                return self.running.pid
+                    return self.running.pid
 
             case Scheduling_Algorithm.ROUND_ROBIN:
-                # self.logger.log(f"Adding process {new_process} to ready queue.")
                 self.ready_queue.append(new_pcb)
                 if self.is_idle():
-                    # self.logger.log("Idle process running, choosing new process.")
                     return self.choose_next_process()
                 else:
-                    # self.logger.log("Idle process not running, continuing process.")
                     return self.running.pid
             case _:
                 raise ValueError(
@@ -161,9 +168,7 @@ class Kernel:
 
     # This method is triggered every time the current process performs an exit syscall.
     # DO NOT rename or delete this method. DO NOT change its arguments.
-
     def syscall_exit(self) -> PID:
-        # self.logger.log(f"Process {str(self.running)} exited.")
         self.exiting = True
         if not self.is_idle():
             return self.choose_next_process()
@@ -171,59 +176,41 @@ class Kernel:
 
     # This method is triggered when the currently running process requests to change its priority.
     # DO NOT rename or delete this method. DO NOT change its arguments.
-    # def syscall_set_priority(self, new_priority: int) -> PID:
-    #     # self.logger.log(f"Process {str(self.running)} set priority to {new_priority}")
-    #     self.exiting = False
-    #     self.running.priority = new_priority
-    #     if self.priority_queue.queue[0].priority < self.running.priority:
-    #         # self.logger.log(f"Process {str(self.running)} has lower priority than process {self.priority_queue.queue[0]}")
-    #         self.priority_queue.put(self.running)
-    #         self.running = self.priority_queue.get()
-    #     return self.running.pid
     def syscall_set_priority(self, new_priority: int) -> PID:
         self.exiting = False
+        old_priority = self.running.priority
         self.running.priority = new_priority
 
-        # ✅ Only check top of priority queue if it's non-empty
         if (self.scheduling_algorithm == Scheduling_Algorithm.PRIORITY and
                 not self.priority_queue.empty()):
+            # Check if any process in queue now has higher priority
             top = self.priority_queue.queue[0]
             if top.priority < self.running.priority:
                 self.priority_queue.put(self.running)
                 self.running = self.priority_queue.get()
+                return self.running.pid
 
         return self.running.pid
 
     def choose_next_process(self) -> PID:
-        # self.logger.log("Choosing next process to run.")
         match self.scheduling_algorithm:
             case Scheduling_Algorithm.FIRST_COME_FIRST_SERVE:
                 if len(self.ready_queue) == 0:
-                    # self.logger.log("No processes in ready queue, running idle.")
                     self.running = self.idle_pcb
                 else:
-                    # self.logger.log("choosing from ready queue.")
-                    # self.logger.log(f"rq: {self.ready_queue}")
                     self.running = self.ready_queue.popleft()
 
             case Scheduling_Algorithm.PRIORITY:
                 if self.priority_queue.empty():
-                    # self.logger.log("No processes in priority queue, running idle.")
                     self.running = self.idle_pcb
                 else:
-                    # self.logger.log("choosing from priority queue.")
-                    # self.logger.log(f"pq: {self.priority_queue.queue}")
-                    # self.logger.log(f"choosing {self.priority_queue.queue[0]}")
                     self.running = self.priority_queue.get()
 
             case Scheduling_Algorithm.ROUND_ROBIN:
                 self.interrupt_counter = 0
                 if len(self.ready_queue) == 0:
-                    # self.logger.log("No processes in ready queue, running idle.")
                     self.running = self.idle_pcb
                 else:
-                    # self.logger.log("choosing from ready queue.")
-                    # self.logger.log(f"rq: {self.ready_queue}")
                     self.running = self.ready_queue.popleft()
 
         return self.running.pid
@@ -247,21 +234,20 @@ class Kernel:
         if semaphore is None:
             raise ValueError(f"Semaphore {semaphore_id} not initialized")
 
+        # Decrement the semaphore
         semaphore["value"] -= 1
 
+        # Only block if value becomes negative
         if semaphore["value"] < 0:
+            # Block current process
             semaphore["waiting"].append(self.running)
-
-            if self.scheduling_algorithm == Scheduling_Algorithm.FIRST_COME_FIRST_SERVE:
-                return self.choose_next_process()
-
             return self.choose_next_process()
 
+        # Continue running if semaphore allows
         return self.running.pid
 
     # This method is triggered when the currently running process calls v() on an existing semaphore.
     # DO NOT rename or delete this method. DO NOT change its arguments.
-
     def syscall_semaphore_v(self, semaphore_id: int) -> PID:
         semaphore = self.semaphores.get(semaphore_id)
         if semaphore is None:
@@ -270,25 +256,30 @@ class Kernel:
         # Increment the semaphore value
         semaphore["value"] += 1
 
+        # Wake up a waiting process if any
         if semaphore["waiting"]:
-            # Unblock the appropriate process based on scheduling policy
             if self.scheduling_algorithm == Scheduling_Algorithm.PRIORITY:
+                # Select highest priority process (lowest priority number, then lowest PID)
                 selected = min(semaphore["waiting"],
                                key=lambda p: (p.priority, p.pid))
-                self.priority_queue.put(selected)
+                semaphore["waiting"].remove(selected)
+
+                # Check if we should preempt current process
+                if selected.priority < self.running.priority:
+                    self.priority_queue.put(self.running)
+                    self.running = selected
+                    return selected.pid
+                else:
+                    self.priority_queue.put(selected)
             else:  # FCFS or RR
                 selected = min(semaphore["waiting"], key=lambda p: p.pid)
+                semaphore["waiting"].remove(selected)
                 self.ready_queue.append(selected)
 
-            # Remove from waitlist after adding back to queue
-            semaphore["waiting"].remove(selected)
-
-        # Do not preempt — continue running current process
         return self.running.pid
 
     # This method is triggered when the currently running process requests to initialize a new mutex.
     # DO NOT rename or delete this method. DO NOT change its arguments.
-
     def syscall_init_mutex(self, mutex_id: int):
         if mutex_id not in self.mutexes:
             self.mutexes[mutex_id] = {
@@ -312,18 +303,10 @@ class Kernel:
 
         # Mutex is taken — block this process
         mutex["waiting"].append(self.running)
-
-        # FCFS: do not preempt
-        if self.scheduling_algorithm == Scheduling_Algorithm.FIRST_COME_FIRST_SERVE:
-            self.running = self.choose_next_process()
-            return self.running.pid
-
-        # RR or Priority — switch to next process
         return self.choose_next_process()
 
     # This method is triggered when the currently running process calls unlock() on an existing mutex.
     # DO NOT rename or delete this method. DO NOT change its arguments.
-
     def syscall_mutex_unlock(self, mutex_id: int) -> PID:
         mutex = self.mutexes.get(mutex_id)
         if mutex is None:
@@ -342,17 +325,22 @@ class Kernel:
             if self.scheduling_algorithm == Scheduling_Algorithm.PRIORITY:
                 selected = min(mutex["waiting"],
                                key=lambda p: (p.priority, p.pid))
-            else:
+                mutex["waiting"].remove(selected)
+                mutex["locked"] = True
+                mutex["owner"] = selected.pid
+
+                # Check if we should preempt current process
+                if selected.priority < self.running.priority:
+                    self.priority_queue.put(self.running)
+                    self.running = selected
+                    return selected.pid
+                else:
+                    self.priority_queue.put(selected)
+            else:  # FCFS or RR
                 selected = min(mutex["waiting"], key=lambda p: p.pid)
-
-            mutex["waiting"].remove(selected)
-            mutex["locked"] = True
-            mutex["owner"] = selected.pid
-
-            # Add it back to the correct queue
-            if self.scheduling_algorithm == Scheduling_Algorithm.PRIORITY:
-                self.priority_queue.put(selected)
-            else:
+                mutex["waiting"].remove(selected)
+                mutex["locked"] = True
+                mutex["owner"] = selected.pid
                 self.ready_queue.append(selected)
 
         return self.running.pid
@@ -361,12 +349,13 @@ class Kernel:
     # It is triggered every 10 microseconds and is the only way a kernel can track passing time.
     # Do not use real time to track how much time has passed as time is simulated.
     # DO NOT rename or delete this method. DO NOT change its arguments.
-
     def timer_interrupt(self) -> PID:
-        # keeps an interrupt counter to track when to change processes
-        # self.logger.log("timer interrupt")
-        self.interrupt_counter += 1
-        if self.interrupt_counter == 4:
-            self.ready_queue.append(self.running)
-            self.choose_next_process()
+        # Only handle Round Robin scheduling in timer interrupt
+        if self.scheduling_algorithm == Scheduling_Algorithm.ROUND_ROBIN:
+            self.interrupt_counter += 1
+            if self.interrupt_counter >= 4:  # 4 * 10 microseconds = 40 microseconds quantum
+                if not self.is_idle():
+                    self.ready_queue.append(self.running)
+                    return self.choose_next_process()
+
         return self.running.pid
