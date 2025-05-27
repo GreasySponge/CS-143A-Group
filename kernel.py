@@ -263,7 +263,12 @@ class Kernel:
                         else:
                             self.running = self.foreground_queue.popleft()
                     else:
-                        self.running = self.background_queue.popleft()                   
+                        self.running = self.background_queue.popleft()  
+                if self.running != self.idle_pcb:
+                    if self.running.process_type != self.current_level:
+                        self.interrupt_counter = 0 
+                    self.current_level = self.running.process_type
+                                    
                 self.exiting = False
 
         return self.running.pid
@@ -350,5 +355,7 @@ class Kernel:
                             self.interrupt_counter = 0
                             return self.choose_next_process()
                 # FCFS doesn't require any extra actions during the timer_interrupt
+                #self.logger.log(f"timer_interrupt: running={self.running}, level={self.current_level}, ic={self.interrupt_counter}, ml_ic={self.ml_interrupt_counter}")
+                #self.logger.log(f"fg_queue={list(self.foreground_queue)}, bg_queue={list(self.background_queue)}")
                 
         return self.running.pid

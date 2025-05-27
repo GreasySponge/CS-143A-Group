@@ -1,79 +1,59 @@
 --- Multilevel2.txt
 +++ test_Multilevel2.txt
-@@ -34,67 +34,25 @@
- 1.014ms : Process 4 has finished execution and is exiting
- 1.014ms : Context switching to pid: 2
+@@ -61,39 +61,39 @@
  
--1.050ms : Context switching to pid: 5
--
--1.090ms : Context switching to pid: 2
--
- 1.100ms : Foreground process 6 arrived with priority 32
+ 1.390ms : Context switching to pid: 7
  
--1.130ms : Context switching to pid: 5
--
--1.170ms : Context switching to pid: 6
--
--1.210ms : Context switching to pid: 2
-+1.137ms : Process 2 has finished execution and is exiting
-+1.137ms : Context switching to pid: 5
- 
- 1.231ms : Background process 7 arrived with priority 32
- 
--1.250ms : Context switching to pid: 5
-+1.330ms : Context switching to pid: 6
- 
--1.290ms : Context switching to pid: 6
--
--1.330ms : Context switching to pid: 2
--
--1.337ms : Process 2 has finished execution and is exiting
--1.337ms : Context switching to pid: 5
--
--1.370ms : Context switching to pid: 6
--
--1.390ms : Context switching to pid: 7
--
 -1.590ms : Context switching to pid: 6
--
++1.590ms : Context switching to pid: 5
+ 
 -1.610ms : Context switching to pid: 5
--
++1.630ms : Context switching to pid: 6
+ 
 -1.650ms : Context switching to pid: 6
--
++1.670ms : Context switching to pid: 5
+ 
 -1.690ms : Context switching to pid: 5
-+1.530ms : Context switching to pid: 5
++1.710ms : Context switching to pid: 6
  
- 1.730ms : Context switching to pid: 6
- 
+-1.730ms : Context switching to pid: 6
+-
 -1.770ms : Context switching to pid: 5
-+1.886ms : Process 6 has finished execution and is exiting
-+1.886ms : Context switching to pid: 5
++1.750ms : Context switching to pid: 5
  
--1.790ms : Context switching to pid: 7
-+1.993ms : Process 5 has finished execution and is exiting
-+1.993ms : Context switching to pid: 7
+ 1.790ms : Context switching to pid: 7
  
--1.946ms : Process 7 has finished execution and is exiting
+ 1.946ms : Process 7 has finished execution and is exiting
 -1.946ms : Context switching to pid: 5
--
++1.946ms : Context switching to pid: 6
+ 
 -1.960ms : Context switching to pid: 6
--
++1.980ms : Context switching to pid: 5
+ 
 -2.000ms : Context switching to pid: 5
--
++2.020ms : Context switching to pid: 6
+ 
 -2.040ms : Context switching to pid: 6
--
++2.060ms : Context switching to pid: 5
+ 
 -2.080ms : Context switching to pid: 5
--
++2.100ms : Context switching to pid: 6
+ 
 -2.120ms : Context switching to pid: 6
--
++2.140ms : Context switching to pid: 5
+ 
 -2.160ms : Context switching to pid: 5
--
++2.180ms : Context switching to pid: 6
+ 
 -2.200ms : Context switching to pid: 6
--
++2.220ms : Context switching to pid: 5
+ 
 -2.236ms : Process 6 has finished execution and is exiting
 -2.236ms : Context switching to pid: 5
--
--2.349ms : Process 5 has finished execution and is exiting
-+2.349ms : Process 7 has finished execution and is exiting
- 2.349ms : Context switching to pid: 0
++2.260ms : Context switching to pid: 6
++
++2.282ms : Process 6 has finished execution and is exiting
++2.282ms : Context switching to pid: 5
  
+ 2.349ms : Process 5 has finished execution and is exiting
+ 2.349ms : Context switching to pid: 0
