@@ -268,7 +268,7 @@ class Kernel:
                     if self.running.process_type != self.current_level:
                         self.interrupt_counter = 0 
                     self.current_level = self.running.process_type
-                                    
+                    
                 self.exiting = False
 
         return self.running.pid
@@ -333,13 +333,15 @@ class Kernel:
                             self.interrupt_counter = 0
                             if not self.exiting and self.running != self.idle_pcb:
                                 # self.logger.log(f"Moving process {self.running.pid} to foreground queue.")
-                                self.foreground_queue.append(self.running)
+                                if self.running.process_type == "Foreground":
+                                    self.foreground_queue.append(self.running)
                             self.current_level = "Background"
                             self.ml_interrupt_counter = 0
                         elif self.current_level == "Background":
                             if not self.exiting and self.running != self.idle_pcb:
                                 # self.logger.log(f"Moving process {self.running.pid} to background queue.")
-                                self.background_queue.insert(0, self.running)
+                                if self.running.process_type == "Background":
+                                    self.background_queue.insert(0, self.running)
                             self.current_level = "Foreground"
                             self.ml_interrupt_counter = 0
                         # self.logger.log(f"Current foreground queue: {self.foreground_queue}")
@@ -351,8 +353,8 @@ class Kernel:
                 if self.current_level == "Foreground":
                     self.interrupt_counter += 1
                     if self.running != self.idle_pcb and self.interrupt_counter == 4:
-                            self.foreground_queue.append(self.running)
                             self.interrupt_counter = 0
+                            self.foreground_queue.append(self.running)
                             return self.choose_next_process()
                 # FCFS doesn't require any extra actions during the timer_interrupt
                 #self.logger.log(f"timer_interrupt: running={self.running}, level={self.current_level}, ic={self.interrupt_counter}, ml_ic={self.ml_interrupt_counter}")
