@@ -122,6 +122,9 @@ class Kernel:
         self.idle_pcb = PCB(0, sys.maxsize, "Background")
         self.running = self.idle_pcb
         self.logger = logger
+        self.foreground_queue = c.deque()
+        self.background_queue = c.deque()
+
 
         # Multilevel scheduling initialization
         self.foreground_queue = c.deque()
@@ -135,7 +138,7 @@ class Kernel:
         output_dir: p.Path = p.Path("output")
         output_dir.mkdir(parents=True, exist_ok=True)
         self.interrupt_counter = 0
-
+        
         # Multilevel scheduling variables
         self.max_ml_time = 200
         self.ml_interrupt_counter = 0
@@ -145,19 +148,21 @@ class Kernel:
         # Semaphore and Mutex storage
         self.semaphores = {}
         self.mutexes = {}
-
+    
+    def is_idle(self) -> bool:
+        return self.running == self.idle_pcb
+    
     # This method is triggered every time a new process has arrived.
     # new_process is this process's PID.
     # priority is the priority of new_process.
     # DO NOT rename or delete this method. DO NOT change its arguments.
     def new_process_arrived(self, new_process: PID, priority: int, process_type: str) -> PID:
-        new_pcb = PCB(new_process, priority, process_type)
 
-        # Set initial level for multilevel scheduling
-        if not self.first_process and self.scheduling_algorithm == Scheduling_Algorithm.MULTI_LEVEL:
+        #self.logger.log(f"Process {new_process} ARRIVED [type={process_type}] at time={self.ml_interrupt_counter * 10}us")
+        new_pcb = PCB(new_process, priority, process_type)
+        if not self.first_process:
             self.current_level = process_type
             self.first_process = True
-
         match self.scheduling_algorithm:
             case Scheduling_Algorithm.FIRST_COME_FIRST_SERVE:
                 self.ready_queue.append(new_pcb)
@@ -196,6 +201,26 @@ class Kernel:
                     return self.choose_next_process()
                 else:
                     return self.running.pid
+                
+            case Scheduling_Algorithm.MULTI_LEVEL:
+                # self.logger.log(f"Adding process {new_process} to {'foreground' if process_type == 'Foreground' else 'background'} queue.")
+                # self.logger.log(f"Current level: {self.current_level}")
+                # self.logger.log(f"Current queue: {self.foreground_queue if self.current_level == 'Foreground' else self.background_queue}")
+                
+                if process_type == "Foreground":
+                    self.foreground_queue.append(new_pcb)
+                elif process_type == "Background":
+                    self.background_queue.append(new_pcb)
+                else:
+                    raise ValueError(f"Improper process type {process_type}")
+                
+                if self.is_idle():
+                    # self.logger.log("Idle process running, choosing new process.")
+                    return self.choose_next_process()
+                else:
+                    # self.logger.log("Idle process not running, continuing process.")
+                    return self.running.pid
+                
             case _:
                 raise ValueError(
                     "Unknown scheduling algorithm: " + str(self.scheduling_algorithm))
@@ -213,7 +238,6 @@ class Kernel:
             elif self.current_level == "Background" and len(self.background_queue) == 0:
                 self.ml_interrupt_counter = 0
                 self.interrupt_counter = 0
-
         if not self.is_idle():
             return self.choose_next_process()
         return self.idle_pcb.pid
@@ -259,10 +283,13 @@ class Kernel:
                     self.running = self.idle_pcb
                 else:
                     self.running = self.ready_queue.popleft()
+            
             case Scheduling_Algorithm.MULTI_LEVEL:
+                # self.logger.log(f"Current level: {self.current_level}")
+                # self.logger.log(f"Current queue: {self.foreground_queue if self.current_level == 'Foreground' else self.background_queue}")
                 if self.current_level == "Foreground":
                     self.interrupt_counter = 0
-                    if len(self.foreground_queue) == 0:
+                    if len(self.foreground_queue) == 0: 
                         if len(self.background_queue) == 0:
                             self.running = self.idle_pcb
                         else:
@@ -276,8 +303,13 @@ class Kernel:
                         else:
                             self.running = self.foreground_queue.popleft()
                     else:
-                        self.running = self.background_queue.popleft()
-
+                        self.running = self.background_queue.popleft()  
+                if self.running != self.idle_pcb:
+                    if self.running.process_type != self.current_level:
+                        self.interrupt_counter = 0 
+                    self.current_level = self.running.process_type
+                    
+                self.exiting = False
                 if self.running != self.idle_pcb:
                     if self.running.process_type != self.current_level:
                         self.interrupt_counter = 0
@@ -285,7 +317,6 @@ class Kernel:
 
                 self.exiting = False
         return self.running.pid
-
     def is_idle(self) -> bool:
         return self.running == self.idle_pcb
 
@@ -419,50 +450,57 @@ class Kernel:
     # Do not use real time to track how much time has passed as time is simulated.
     # DO NOT rename or delete this method. DO NOT change its arguments.
     def timer_interrupt(self) -> PID:
+        # keeps an interrupt counter to track when to change processes
         self.exiting = False
-
+        # self.logger.log("timer interrupt")
         match self.scheduling_algorithm:
             case Scheduling_Algorithm.ROUND_ROBIN:
                 self.interrupt_counter += 1
-                if self.interrupt_counter >= 4:  # 4 * 10 microseconds = 40 microseconds quantum
-                    if not self.is_idle():
-                        self.ready_queue.append(self.running)
-                        return self.choose_next_process()
+                if self.interrupt_counter == 4:
+                    self.ready_queue.append(self.running)
+                    return self.choose_next_process()
 
             case Scheduling_Algorithm.MULTI_LEVEL:
                 self.ml_interrupt_counter += 1
-
+                # self.logger.log(f"Running Process: {self.running} Multi-Level Interrupt Counter: {self.ml_interrupt_counter}, Current level: {self.current_level}")
                 # if we have reached the max time for the current level, we need to switch levels
-                if self.ml_interrupt_counter == 20:  # 20 * 10 microseconds = 200 microseconds
+                if self.ml_interrupt_counter == 20:
                     self.ml_interrupt_counter = 0
+
                     # if the other level is not empty, we need to switch levels
                     if not self.is_other_level_empty():
+                        # self.logger.log(f"Switching levels from {self.current_level} to {'Background' if self.current_level == 'Foreground' else 'Foreground'}")
                         if self.current_level == "Foreground":
                             self.interrupt_counter = 0
                             if not self.exiting and self.running != self.idle_pcb:
+                                # self.logger.log(f"Moving process {self.running.pid} to foreground queue.")
                                 if self.running.process_type == "Foreground":
                                     self.foreground_queue.append(self.running)
                             self.current_level = "Background"
                             self.ml_interrupt_counter = 0
                         elif self.current_level == "Background":
                             if not self.exiting and self.running != self.idle_pcb:
+
+                                # self.logger.log(f"Moving process {self.running.pid} to background queue.")
                                 if self.running.process_type == "Background":
-                                    self.background_queue.insert(
-                                        0, self.running)
+                                    self.background_queue.insert(0, self.running)
                             self.current_level = "Foreground"
                             self.ml_interrupt_counter = 0
-
+                        # self.logger.log(f"Current foreground queue: {self.foreground_queue}")
+                        # self.logger.log(f"Current background queue: {self.background_queue}")
                         # context switch to the other level with the first process in that level
                         return self.choose_next_process()
                     # the other level is empty, so we commit to the current level
-
                 # its not time to context switch, we can just continue round robin style scheduling
                 if self.current_level == "Foreground":
                     self.interrupt_counter += 1
                     if self.running != self.idle_pcb and self.interrupt_counter == 4:
-                        self.interrupt_counter = 0
-                        self.foreground_queue.append(self.running)
-                        return self.choose_next_process()
-                # FCFS doesn't require any extra actions during the timer_interrupt
 
+                            self.interrupt_counter = 0
+                            self.foreground_queue.append(self.running)
+                            return self.choose_next_process()
+                # FCFS doesn't require any extra actions during the timer_interrupt
+                #self.logger.log(f"timer_interrupt: running={self.running}, level={self.current_level}, ic={self.interrupt_counter}, ml_ic={self.ml_interrupt_counter}")
+                #self.logger.log(f"fg_queue={list(self.foreground_queue)}, bg_queue={list(self.background_queue)}")
+                
         return self.running.pid
