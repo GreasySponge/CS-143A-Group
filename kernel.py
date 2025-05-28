@@ -158,10 +158,7 @@ class Kernel:
 
     def log_queue_ml(self):
         self.logger.log(f"lvl: {self.current_level}")
-        self.logger.log(f"cur-q: {self.foreground_queue \
-                            if self.current_level \
-                            == 'Foreground' \
-                            else self.background_queue}")
+        self.logger.log(f"cur-q: {self.foreground_queue if self.current_level == 'Foreground'else self.background_queue}")
 
     def log_both_queues_ml(self):
         self.logger.log(f"fg-q: {self.foreground_queue}")
@@ -170,8 +167,7 @@ class Kernel:
     def log_interrupt(self):
         self.logger.log(f"lvl: {self.current_level}")
         self.logger.log(f"cur-proc: {self.running}") 
-        self.logger.log(f"ml_interrupt_ctr: {\
-            self.ml_interrupt_counter}")
+        self.logger.log(f"ml_interrupt_ctr: {self.ml_interrupt_counter}")
 
     # This method is triggered every time a new process has arrived.
     # new_process is this process's PID.
@@ -428,9 +424,7 @@ class Kernel:
             raise ValueError(f"Mutex {mutex_id} not initialized")
 
         if mutex["owner"] != self.running.pid:
-            raise PermissionError(
-                f"Process {self.running.pid} cannot unlock mutex \
-                    it does not own")
+            raise PermissionError(f"Process {self.running.pid} cannot unlock mutex it does not own")
 
         # Unlock the mutex
         mutex["locked"] = False
@@ -461,14 +455,13 @@ class Kernel:
         return self.running.pid
 
     def switch_levels(self):
+        self.logger.log(f"Switching levels from {self.current_level} to {'Background' if self.current_level == 'Foreground' else 'Foreground'}")
         if self.current_level == "Foreground":
             self.interrupt_counter = 0
             if not self.exiting and self.running \
                 != self.idle_pcb:
                 
-                self.logger.log(f"Moving process { \
-                                self.running.pid \
-                                } to foreground queue.")
+                self.logger.log(f"Moving process {self.running.pid} to foreground queue.")
                 if self.running.process_type \
                     == "Foreground":
                     self.foreground_queue.append(\
@@ -479,9 +472,7 @@ class Kernel:
             if not self.exiting and self.running \
                 != self.idle_pcb:
 
-                self.logger.log(f"Moving process {\
-                                self.running.pid \
-                                }to background queue.")
+                self.logger.log(f"Moving process {self.running.pid} to background queue.")
                 if self.running.process_type \
                     == "Background":
                     self.background_queue.insert(\
@@ -517,13 +508,9 @@ class Kernel:
                     # if the other level is not empty, we need 
                     # to switch levels
                     if not self.is_other_level_empty():
-                        self.logger.log(f"Switching levels from {\
-                            self.current_level} to {\
-                                'Background' if self.current_level \
-                                == 'Foreground' else 'Foreground'}")
                         self.switch_levels()
                         self.log_both_queues_ml()
-                        # context switch to the other level 
+                        # context switch to the other level
                         # with the first process in that level
                         return self.choose_next_process()
                     # the other level is empty, so we commit to the 
