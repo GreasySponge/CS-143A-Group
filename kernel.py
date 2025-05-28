@@ -317,8 +317,6 @@ class Kernel:
 
                 self.exiting = False
         return self.running.pid
-    def is_idle(self) -> bool:
-        return self.running == self.idle_pcb
 
     # This method is triggered when the currently running process requests to initialize a new semaphore.
     # DO NOT rename or delete this method. DO NOT change its arguments.
