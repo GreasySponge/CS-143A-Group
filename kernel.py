@@ -148,6 +148,7 @@ class Kernel:
         self.ml_interrupt_counter = 0
         self.current_level = "Foreground"
         self.found_first_process = False
+        self.rr_time_remaining = 0
 
         # Semaphore and Mutex storage
         self.semaphores = {}
@@ -234,14 +235,14 @@ class Kernel:
 
         # Reset counters for multilevel scheduling when queue becomes empty
         if self.scheduling_algorithm == Scheduling_Algorithm.MULTI_LEVEL:
+            if self.current_level == "Foreground" and self.interrupt_counter == 0:
+                self.rr_time_remaining = 4
             if self.current_level == "Foreground" \
                 and len(self.foreground_queue) == 0:
-                
                 self.ml_interrupt_counter = 0
                 self.interrupt_counter = 0
             elif self.current_level == "Background" \
                 and len(self.background_queue) == 0:
-                
                 self.ml_interrupt_counter = 0
                 self.interrupt_counter = 0
         if not self.is_idle():
@@ -291,9 +292,8 @@ class Kernel:
                 else:
                     self.running = self.ready_queue.popleft()
             case Scheduling_Algorithm.MULTI_LEVEL:
-                self.log_queue_ml()
+                # self.log_queue_ml()
                 if self.current_level == "Foreground":
-                    self.interrupt_counter = 0
                     if len(self.foreground_queue) == 0: 
                         if len(self.background_queue) == 0:
                             self.running = self.idle_pcb
@@ -301,12 +301,18 @@ class Kernel:
                             self.running = self.background_queue.popleft()
                     else:
                         self.running = self.foreground_queue.popleft()
+                        self.interrupt_counter = 0
                 elif self.current_level == "Background":
                     if len(self.background_queue) == 0:
                         if len(self.foreground_queue) == 0:
                             self.running = self.idle_pcb
                         else:
-                            self.running = self.foreground_queue.popleft()
+                            if  self.rr_time_remaining != 4:
+                                self.interrupt_counter = 4 - self.rr_time_remaining
+                                self.running = self.foreground_queue.pop()
+                            else:
+                                self.running = self.foreground_queue.popleft()
+                                self.interrupt_counter = 0
                     else:
                         self.running = self.background_queue.popleft()  
                 if self.running != self.idle_pcb:
@@ -315,12 +321,7 @@ class Kernel:
                     self.current_level = self.running.process_type
                     
                 self.exiting = False
-                if self.running != self.idle_pcb:
-                    if self.running.process_type != self.current_level:
-                        self.interrupt_counter = 0
-                    self.current_level = self.running.process_type
-
-                self.exiting = False
+                
         return self.running.pid
 
     # This method is triggered when the currently running process requests 
@@ -455,13 +456,13 @@ class Kernel:
         return self.running.pid
 
     def switch_levels(self):
-        self.logger.log(f"Switching levels from {self.current_level} to {'Background' if self.current_level == 'Foreground' else 'Foreground'}")
+        # self.logger.log(f"Switching levels from {self.current_level} to {'Background' if self.current_level == 'Foreground' else 'Foreground'}")
         if self.current_level == "Foreground":
             self.interrupt_counter = 0
             if not self.exiting and self.running \
                 != self.idle_pcb:
                 
-                self.logger.log(f"Moving process {self.running.pid} to foreground queue.")
+                # self.logger.log(f"Moving process {self.running.pid} to foreground queue.")
                 if self.running.process_type \
                     == "Foreground":
                     self.foreground_queue.append(\
@@ -472,7 +473,7 @@ class Kernel:
             if not self.exiting and self.running \
                 != self.idle_pcb:
 
-                self.logger.log(f"Moving process {self.running.pid} to background queue.")
+                # self.logger.log(f"Moving process {self.running.pid} to background queue.")
                 if self.running.process_type \
                     == "Background":
                     self.background_queue.insert(\
@@ -488,7 +489,7 @@ class Kernel:
     # simulated.
     # DO NOT rename or delete this method. DO NOT change its arguments.
     def timer_interrupt(self) -> PID:
-        self.log_interrupt()
+        # self.log_interrupt()
         # keeps an interrupt counter to track when to change processes
         self.exiting = False
         match self.scheduling_algorithm:
@@ -509,7 +510,7 @@ class Kernel:
                     # to switch levels
                     if not self.is_other_level_empty():
                         self.switch_levels()
-                        self.log_both_queues_ml()
+                        # self.log_both_queues_ml()
                         # context switch to the other level
                         # with the first process in that level
                         return self.choose_next_process()
@@ -519,9 +520,10 @@ class Kernel:
                 # round robin style scheduling
                 if self.current_level == "Foreground":
                     self.interrupt_counter += 1
+                    self.rr_time_remaining -= 1
                     if self.running != self.idle_pcb \
                         and self.interrupt_counter == 4:
-
+                            self.rr_time_remaining = 4
                             self.interrupt_counter = 0
                             self.foreground_queue.append(self.running)
                             return self.choose_next_process()
