@@ -12,6 +12,7 @@ PID = int
 
 BACKGROUND: str = "Background"
 FOREGROUND: str = "Foreground"
+VIRTUAL_BASE = 0X20000000
 
 # This class represents the PCB of processes.
 # It is only here for your convinience and can be modified however you see fit.
@@ -86,11 +87,18 @@ class Kernel:
         self.active_queue = FOREGROUND
         self.active_queue_num_ticks = 0
 
+        #Student defined
+        
+
     # This function is triggered every time a new process has arrived.
     # new_process is this process's PID.
     # priority is the priority of new_process.
     # DO NOT rename or delete this method. DO NOT change its arguments.
     def new_process_arrived(self, new_process: PID, priority: int, process_type: str, memory_needed: int) -> PID:
+        start = self.mmu.allocate(new_process, memory_needed)
+        if start == -1:
+            return -1
+        
         self.ready_queue.append(PCB(new_process, priority, process_type))
         
         # Neither queue was active, so when a process arrives, it is the start of a new queue
@@ -102,6 +110,7 @@ class Kernel:
     # This function is triggered every time the current process performs an exit syscall.
     # DO NOT rename or delete this method. DO NOT change its arguments.
     def syscall_exit(self) -> PID:
+        self.mmu.deallocate(self.running.pid)
         self.running = self.idle_pcb
         self.choose_next_process()
         return self.running.pid
@@ -295,13 +304,65 @@ class MMU:
     # Use this function to initilize any variables you need throughout the simulation.
     # DO NOT rename or delete this method. DO NOT change its arguments.
     def __init__(self, logger):
-        pass
+        self.kernel_size = 10485760
+        self.memory_map = [(kernel_size, memory_size - kernel_size)]
+        self.currently_allocated = {} #pid -> start_size
+        self.blocks_allocated = [] #List of (start, size), sorted by start address.
+        self.memory_size = memory_size
+        
 
+    def allocate(self, pid: int, size: int) -> int:
+        holes = []
+        
+        #Sort allocated blocks by start address.
+        self.blocks_allocated.sort()
+        
+        #Look for holes between blocks.
+        prev_end = self.kernel_size
+        for start, alloc_size in self.blocks_allocated:
+            if start > prev_end:
+                hole_size = start - prev_end
+                if hole_size >= size:
+                    holes.append((prev_end, hole_size))
+            prev_end = start + alloc_size
+        #Now check the end of memory for a hole.
+        if self.memory_size > prev_end:
+            hole_size = self.memory_size - prev_end
+            if hole_size >= size:
+                holes.append((prev_end, hole_size))
+        #Find the best fit.
+        best = None
+        for hole_start, hole_size in holes:
+            if hole_size >= size:
+                if best is None or hole_size < best[1] or (hole_size == best[1] and \
+                    hole_start < best[0]):
+                    best = (hole_start, hole_size)
+        if best is None:
+            return -1 #Not enough memory
+        
+        start = best[0]
+        self.currently_allocated[pid] = (start, size)
+        self.blocks_allocated.append((start, size))
+        return start
+    
+    def deallocate(self, pid:int)
+        if pid in self.currently_allocated:
+            start, size = self.currently_allocated.pop(pid)
+            self.blocks_allocated.remove((start, size))
+        
     # Translate the virtual address to its physical address.
     # If it is not a valid address for the given process, return None which will cause a segmentation fault.
     # DO NOT rename or delete this method. DO NOT change its arguments.
     def translate(self, address: int, pid: PID) -> int | None:
-        return None
+        offset = address - VIRTUAL_BASE
+        
+        if pid not in self.currently_allocated or \
+        address < VIRTUAL_BASE or offset >= size:
+            return None
+        
+        start, size = self.currently_allocated[pid]
+        
+        return start + offset
 
 def exceeded_quantum(pcb: PCB) -> bool:
     if pcb.num_quantum_ticks >= RR_QUANTUM_TICKS:
