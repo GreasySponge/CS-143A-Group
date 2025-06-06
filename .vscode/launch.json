@@ -3,6 +3,62 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "BestFit1",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "simulator.py",
+            "args": "simulations/BestFit1.json output/test_BestFit1.txt"
+        },
+        {
+            "name": "BestFit2",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "simulator.py",
+            "args": "simulations/BestFit2.json output/test_BestFit2.txt"
+        },
+        {
+            "name": "BestFit3",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "simulator.py",
+            "args": "simulations/BestFit3.json output/test_BestFit3.txt"
+        },
+        {
+            "name": "EnoughMemory1",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "simulator.py",
+            "args": "simulations/EnoughMemory1.json output/test_EnoughMemory1.txt"
+        },
+        {
+            "name": "EnoughMemory2",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "simulator.py",
+            "args": "simulations/EnoughMemory2.json output/test_EnoughMemory2.txt"
+        },
+        {
+            "name": "NotEnoughMemory1",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "simulator.py",
+            "args": "simulations/NotEnoughMemory1.json output/test_NotEnoughMemory1.txt"
+        },
+        {
+            "name": "NotEnoughMemory2",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "simulator.py",
+            "args": "simulations/NotEnoughMemory2.json output/test_NotEnoughMemory2.txt"
+        },
+        {
+            "name": "BadAddresses1",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "simulator.py",
+            "args": "simulations/BadAddresses1.json output/test_BadAddresses1.txt"
+        },
+        {
             "name": "GetDiffs",
             "type": "debugpy",
             "request": "launch",
@@ -143,6 +199,26 @@
         {
             "name": "Run Mutex and Semaphore (Priority)",
             "configurations": ["Mutex1", "Mutex2", "Semaphore1", "Semaphore2", "Semaphore3"],
+            "stopAll": true
+        },
+        {
+            "name": "Run All Best-Fit",
+            "configurations": ["BestFit1", "BestFit2", "BestFit3"],
+            "stopAll": true
+        },
+        {
+            "name": "Run All Enough-Memory",
+            "configurations": ["EnoughMemory1", "EnoughMemory2"],
+            "stopAll": true
+        },
+        {
+            "name": "Run All Not-Enough-Memory",
+            "configurations": ["NotEnoughMemory1", "NotEnoughMemory2"],
+            "stopAll": true
+        },
+        {
+            "name": "Run All Memory-Related",
+            "configurations": ["EnoughMemory1", "EnoughMemory2", "NotEnoughMemory1", "NotEnoughMemory2"],
             "stopAll": true
         },
     ]
