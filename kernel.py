@@ -1,11 +1,13 @@
 ### Fill in the following information before submitting
-# Group id: 
-# Members: 
+# Group id: 2
+# Members: Nathan Andrews, Drake Smith, Aditya Chakka
 
 
 
 from collections import deque
 from dataclasses import dataclass
+
+from sortedcontainers import SortedList
 
 # PID is just an integer, but it is used to make it clear when a integer is expected to be a valid PID.
 PID = int
@@ -21,11 +23,15 @@ class PCB:
     num_quantum_ticks: int
     process_type: str
 
-    def __init__(self, pid: PID, priority: int, process_type: str):
+    memory_tuple: tuple[int, int]
+
+    def __init__(self, pid: PID, priority: int, process_type: str, memory_tuple: tuple[int, int]):
         self.pid = pid
         self.priority = priority
         self.num_quantum_ticks = 0
         self.process_type = process_type
+        
+        self.memory_tuple = memory_tuple
 
     def __str__(self):
         return f"({self.pid}, {self.priority})"
@@ -68,6 +74,8 @@ class Kernel:
     rr_ready_queue: deque[PCB]
     active_queue: str
     active_queue_num_ticks: int
+    
+    memory_list: SortedList
 
     # Called before the simulation begins.
     # Use this function to initilize any variables you need throughout the simulation.
@@ -76,7 +84,7 @@ class Kernel:
         self.scheduling_algorithm = scheduling_algorithm
         self.ready_queue = deque()
         self.waiting_queue = deque()
-        self.idle_pcb = PCB(0, 0, "Foreground")
+        self.idle_pcb = PCB(0, 0, "Foreground", (-1, -1))
         self.running = self.idle_pcb
         self.semaphores = dict()
         self.mutexes = dict()
@@ -85,13 +93,23 @@ class Kernel:
         self.rr_ready_queue = deque()
         self.active_queue = FOREGROUND
         self.active_queue_num_ticks = 0
+        self.memory_size = memory_size
+    
+        self.memory_list: SortedList = SortedList([(10, memory_size)])
+
+
+    def find_bucket(self, memory_needed: int) -> int:
+        
+        
+        return 0
 
     # This function is triggered every time a new process has arrived.
     # new_process is this process's PID.
     # priority is the priority of new_process.
     # DO NOT rename or delete this method. DO NOT change its arguments.
     def new_process_arrived(self, new_process: PID, priority: int, process_type: str, memory_needed: int) -> PID:
-        self.ready_queue.append(PCB(new_process, priority, process_type))
+        memory_tuple: tuple[int, int] = (self.find_bucket(memory_needed), memory_needed)
+        self.ready_queue.append(PCB(new_process, priority, process_type, memory_tuple))
         
         # Neither queue was active, so when a process arrives, it is the start of a new queue
         if self.scheduling_algorithm == MULTILEVEL and self.running is self.idle_pcb:
@@ -127,7 +145,7 @@ class Kernel:
             if self.running is not self.idle_pcb:
                 self.ready_queue.append(self.running)
 
-            next_process = pop_min_priority(self.ready_queue)
+            next_process = pop_min_priority(self.ready_queue) # type: ignore
             self.running = next_process
         elif self.scheduling_algorithm == RR:
             self.rr_chose_next_process(self.ready_queue)
@@ -179,7 +197,7 @@ class Kernel:
         
         if self.running is self.idle_pcb:
             # Lower pid was the first to arrive
-            self.running = pop_min_pid(queue)
+            self.running = pop_min_pid(queue) # type: ignore
 
     def switch_active_queue(self):
         # Reset the number of ticks with the active queue
@@ -226,9 +244,9 @@ class Kernel:
             to_be_released = None
 
             if self.scheduling_algorithm == PRIORITY:
-                to_be_released = pop_min_priority(semaphore.waiting)
+                to_be_released = pop_min_priority(semaphore.waiting) # type: ignore
             else:
-                to_be_released = pop_min_pid(semaphore.waiting)
+                to_be_released = pop_min_pid(semaphore.waiting) # type: ignore
 
             self.ready_queue.append(to_be_released)
             to_be_released.num_quantum_ticks = 0
@@ -295,12 +313,22 @@ class MMU:
     # Use this function to initilize any variables you need throughout the simulation.
     # DO NOT rename or delete this method. DO NOT change its arguments.
     def __init__(self, logger):
+        self.logger = logger
+        # memory implementation?
+        # list of bounds, 0 is implied, max amount of memory is first segment
+        self.memory_list: list[int] = [10485760]
+
+    def find_memory_space(self, item: int):
+        pass
+
+    def is_valid_address(self, address: int, pid: PID):
         pass
 
     # Translate the virtual address to its physical address.
     # If it is not a valid address for the given process, return None which will cause a segmentation fault.
     # DO NOT rename or delete this method. DO NOT change its arguments.
     def translate(self, address: int, pid: PID) -> int | None:
+        self.logger.log(f"{address}, {pid}")
         return None
 
 def exceeded_quantum(pcb: PCB) -> bool:
