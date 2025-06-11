@@ -112,6 +112,8 @@ RR: str = "RR"
 FCFS: str = "FCFS"
 PRIORITY: str = "Priority"
 
+VIRTUAL_BASE = 0X20000000
+
 # This class represents the Kernel of the simulation.
 # The simulator will create an instance of this object and use it to respond to syscalls and interrupts.
 # DO NOT modify the name of this class or remove it.
