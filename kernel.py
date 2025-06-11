@@ -59,7 +59,7 @@ class Segment:
 class Memory:
     def __init__(self, logger, total_size: int):
         self.logger = logger
-        self.segments: list[Segment] = [Segment(10, total_size)]
+        self.segments: list[Segment] = [Segment(10485760, total_size)]
 
     # best fit allocation
     def allocate(self, pid: int, size: int):
@@ -96,8 +96,9 @@ class Memory:
     def search(self, pid: int):
         for segment in self.segments:
             if segment.pid == pid:
+                # self.logger.log(f"{segment.start}, {segment.size}")
                 return segment.start, segment.size
-        return -1, -1
+        return None, None
 
     def show(self):
         self.logger.log("Memory Layout:")
@@ -373,8 +374,8 @@ class MMU:
     # If it is not a valid address for the given process, return None which will cause a segmentation fault.
     # DO NOT rename or delete this method. DO NOT change its arguments.
     def translate(self, address: int, pid: PID) -> int | None:
-        start, size = self.memory.search(pid)
-        if start == -1:
+        start, size = self.memory.search(pid) # in megabytes
+        if start is None or size is None:
             return None
 
         if address < VIRTUAL_BASE:
@@ -386,6 +387,7 @@ class MMU:
             return None
 
         return start + offset
+    
 def exceeded_quantum(pcb: PCB) -> bool:
     if pcb.num_quantum_ticks >= RR_QUANTUM_TICKS:
         pcb.num_quantum_ticks = 0

@@ -228,5 +228,11 @@
             "configurations": ["EnoughMemory1", "EnoughMemory2", "NotEnoughMemory1", "NotEnoughMemory2", "BadAddresses1"],
             "stopAll": true
         },
+        {
+            "name": "Run All",
+            "configurations": ["EnoughMemory1", "EnoughMemory2", "NotEnoughMemory1", "NotEnoughMemory2", 
+            "BadAddresses1", "BestFit1", "BestFit2", "BestFit3", "BestFit4"],
+            "stopAll": true
+        },
     ]
 }
