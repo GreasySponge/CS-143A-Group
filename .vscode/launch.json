@@ -24,6 +24,13 @@
             "args": "simulations/BestFit3.json output/test_BestFit3.txt"
         },
         {
+            "name": "BestFit4",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "simulator.py",
+            "args": "simulations/BestFit4.json output/test_BestFit4.txt"
+        },
+        {
             "name": "EnoughMemory1",
             "type": "debugpy",
             "request": "launch",
@@ -203,7 +210,7 @@
         },
         {
             "name": "Run All Best-Fit",
-            "configurations": ["BestFit1", "BestFit2", "BestFit3"],
+            "configurations": ["BestFit1", "BestFit2", "BestFit3", "BestFit4"],
             "stopAll": true
         },
         {
@@ -218,7 +225,7 @@
         },
         {
             "name": "Run All Memory-Related",
-            "configurations": ["EnoughMemory1", "EnoughMemory2", "NotEnoughMemory1", "NotEnoughMemory2"],
+            "configurations": ["EnoughMemory1", "EnoughMemory2", "NotEnoughMemory1", "NotEnoughMemory2", "BadAddresses1"],
             "stopAll": true
         },
     ]

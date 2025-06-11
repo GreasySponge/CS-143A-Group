@@ -34,5 +34,19 @@ def rr():
     simple_rr()
     complex_rr()
 
+def memory():
+    compare_files("EnoughMemory1")
+    compare_files("EnoughMemory2")
+    compare_files("NotEnoughMemory1")
+    compare_files("NotEnoughMemory2")
+    compare_files("BadAddresses1")
+
+def best_fit():
+    compare_files("BestFit1")
+    compare_files("BestFit2")
+    compare_files("BestFit3")
+    compare_files("BestFit4")
+
 if __name__ == "__main__":
-    multi_level()
+    memory()
+    best_fit()

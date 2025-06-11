@@ -2,12 +2,8 @@
 # Group id: 2
 # Members: Nathan Andrews, Drake Smith, Aditya Chakka
 
-
-
 from collections import deque
 from dataclasses import dataclass
-
-from sortedcontainers import SortedList
 
 # PID is just an integer, but it is used to make it clear when a integer is expected to be a valid PID.
 PID = int
@@ -23,19 +19,15 @@ class PCB:
     num_quantum_ticks: int
     process_type: str
 
-    memory_tuple: tuple[int, int]
-
-    def __init__(self, pid: PID, priority: int, process_type: str, memory_tuple: tuple[int, int]):
+    def __init__(self, pid: PID, priority: int, process_type: str):
         self.pid = pid
         self.priority = priority
         self.num_quantum_ticks = 0
         self.process_type = process_type
-        
-        self.memory_tuple = memory_tuple
 
     def __str__(self):
         return f"({self.pid}, {self.priority})"
-    
+
     def __repr__(self):
         return f"({self.pid}, {self.priority})"
 
@@ -50,6 +42,67 @@ class Mutex:
     def __init__(self):
         # A mutex is essentially a semaphore with a value of 1
         self.semaphore = Semaphore(1, deque())
+
+class Segment:
+    def __init__(self, start: int, size: int, pid: int | None = None):
+        self.start: int = start
+        self.size: int = size
+        self.pid: int | None = pid
+
+    def is_free(self):
+        return self.pid is None
+
+    def __repr__(self):
+        status = 'Free' if self.is_free() else f'PID={self.pid}'
+        return f'[{self.start}-{self.start + self.size - 1} | {self.size} | {status}]'
+
+class Memory:
+    def __init__(self, logger, total_size: int):
+        self.logger = logger
+        self.segments: list[Segment] = [Segment(10, total_size)]
+
+    # best fit allocation
+    def allocate(self, pid: int, size: int):
+        best_segment: Segment | None = None
+        for segment in self.segments:
+            if segment.is_free() and segment.size >= size:
+                if best_segment is None or segment.size < best_segment.size:
+                    best_segment = segment
+        if best_segment is None:
+            # self.logger.log(f"No suitable segment for PID {pid}")
+            return False
+        if best_segment.size > size:
+            new_block = Segment(best_segment.start + size, best_segment.size - size)
+            self.segments.insert(self.segments.index(best_segment) + 1, new_block)
+        best_segment.size = size
+        best_segment.pid = pid
+        return True
+
+    def free(self, pid):
+        for segment in self.segments:
+            if segment.pid == pid:
+                segment.pid = None
+        self.coalesce()
+
+    def coalesce(self):
+        i = 0
+        while i < len(self.segments) - 1:
+            if self.segments[i].is_free() and self.segments[i+1].is_free():
+                self.segments[i].size += self.segments[i+1].size
+                del self.segments[i+1]
+            else:
+                i += 1
+    
+    def search(self, pid: int):
+        for segment in self.segments:
+            if segment.pid == pid:
+                return segment.start, segment.size
+        return -1, -1
+
+    def show(self):
+        self.logger.log("Memory Layout:")
+        for segment in self.segments:
+            self.logger.log(f"  {segment}")
 
 RR_QUANTUM_TICKS: int = 4
 ACTIVE_QUEUE_NUM_TICKS: int = 20
@@ -74,8 +127,6 @@ class Kernel:
     rr_ready_queue: deque[PCB]
     active_queue: str
     active_queue_num_ticks: int
-    
-    memory_list: SortedList
 
     # Called before the simulation begins.
     # Use this function to initilize any variables you need throughout the simulation.
@@ -84,7 +135,7 @@ class Kernel:
         self.scheduling_algorithm = scheduling_algorithm
         self.ready_queue = deque()
         self.waiting_queue = deque()
-        self.idle_pcb = PCB(0, 0, "Foreground", (-1, -1))
+        self.idle_pcb = PCB(0, 0, "Foreground")
         self.running = self.idle_pcb
         self.semaphores = dict()
         self.mutexes = dict()
@@ -93,37 +144,36 @@ class Kernel:
         self.rr_ready_queue = deque()
         self.active_queue = FOREGROUND
         self.active_queue_num_ticks = 0
+        
         self.memory_size = memory_size
-    
-        self.memory_list: SortedList = SortedList([(10, memory_size)])
-
-
-    def find_bucket(self, memory_needed: int) -> int:
-        
-        
-        return 0
+        self.mmu = mmu
+        self.mmu.memory = Memory(self.logger, memory_size)
 
     # This function is triggered every time a new process has arrived.
     # new_process is this process's PID.
     # priority is the priority of new_process.
     # DO NOT rename or delete this method. DO NOT change its arguments.
     def new_process_arrived(self, new_process: PID, priority: int, process_type: str, memory_needed: int) -> PID:
-        memory_tuple: tuple[int, int] = (self.find_bucket(memory_needed), memory_needed)
-        self.ready_queue.append(PCB(new_process, priority, process_type, memory_tuple))
-        
+        if self.mmu.memory.allocate(new_process, memory_needed):
+            self.ready_queue.append(PCB(new_process, priority, process_type))
+        else:
+            return -1
         # Neither queue was active, so when a process arrives, it is the start of a new queue
         if self.scheduling_algorithm == MULTILEVEL and self.running is self.idle_pcb:
             self.active_queue_num_ticks = 0
         self.choose_next_process()
-        return self.running.pid  
+        return self.running.pid
 
     # This function is triggered every time the current process performs an exit syscall.
     # DO NOT rename or delete this method. DO NOT change its arguments.
     def syscall_exit(self) -> PID:
+        
+        self.mmu.memory.free(self.running.pid)
+        
         self.running = self.idle_pcb
         self.choose_next_process()
         return self.running.pid
-    
+
     # This function is triggered when the currently running process requests to change its priority.
     # DO NOT rename or delete this method. DO NOT change its arguments.
     def syscall_set_priority(self, new_priority: int) -> PID:
@@ -141,7 +191,7 @@ class Kernel:
         elif self.scheduling_algorithm == PRIORITY:
             if len(self.ready_queue) == 0:
                 return
-            
+
             if self.running is not self.idle_pcb:
                 self.ready_queue.append(self.running)
 
@@ -159,14 +209,14 @@ class Kernel:
                     self.fcfs_ready_queue.append(pcb)
                 else:
                     print("Unknown process type")
-            
+
             if self.active_queue == FOREGROUND:
                 # RR queue
                 self.rr_chose_next_process(self.rr_ready_queue)
             elif self.active_queue == BACKGROUND:
                 # FCFS queue
                 self.fcfs_chose_next_process(self.fcfs_ready_queue)
-                   
+
             # If we have nothing to run in the current queue switch the queue
             if self.running is self.idle_pcb:
                 self.switch_active_queue()
@@ -176,7 +226,7 @@ class Kernel:
                 elif self.active_queue == BACKGROUND:
                     # FCFS queue
                     self.fcfs_chose_next_process(self.fcfs_ready_queue)
-            
+
         else:
             print("Unknown scheduling algorithm")
 
@@ -184,7 +234,7 @@ class Kernel:
         if self.running is self.idle_pcb:
             if len(queue) == 0:
                 return
-        
+
             self.running = queue.popleft()
         elif exceeded_quantum(self.running):
             # Put on end of queue and run next process
@@ -194,7 +244,7 @@ class Kernel:
     def fcfs_chose_next_process(self, queue: deque[PCB]):
         if len(queue) == 0:
             return
-        
+
         if self.running is self.idle_pcb:
             # Lower pid was the first to arrive
             self.running = pop_min_pid(queue) # type: ignore
@@ -207,7 +257,7 @@ class Kernel:
             # If background has no processes do nothing.
             if len(self.fcfs_ready_queue) == 0:
                 return
-            
+
             if self.running is not self.idle_pcb:
                 # If the running process should be switched out, move it to the back before switching
                 if exceeded_quantum(self.running):
@@ -252,25 +302,25 @@ class Kernel:
             to_be_released.num_quantum_ticks = 0
             self.choose_next_process()
             # Don't increment value because we freed a process instead
-        else: 
+        else:
             semaphore.value += 1
 
     # This method is triggered when the currently running process requests to initilize a new semaphore.
     # DO NOT rename or delete this method. DO NOT change its arguments.
     def syscall_init_semaphore(self, semaphore_id: int, initial_value: int):
         self.semaphores[semaphore_id] = Semaphore(initial_value, deque())
-    
+
     # This method is triggered when the currently running process calls p() on an existing semaphore.
     # DO NOT rename or delete this method. DO NOT change its arguments.
     def syscall_semaphore_p(self, semaphore_id: int) -> PID:
         self.semaphore_p(self.semaphores[semaphore_id])
-        return self.running.pid 
+        return self.running.pid
 
     # This method is triggered when the currently running process calls v() on an existing semaphore.
     # DO NOT rename or delete this method. DO NOT change its arguments.
     def syscall_semaphore_v(self, semaphore_id: int) -> PID:
         self.semaphore_v(self.semaphores[semaphore_id])
-        return self.running.pid 
+        return self.running.pid
 
     # This method is triggered when the currently running process requests to initilize a new mutex.
     # DO NOT rename or delete this method. DO NOT change its arguments.
@@ -281,14 +331,14 @@ class Kernel:
     # DO NOT rename or delete this method. DO NOT change its arguments.
     def syscall_mutex_lock(self, mutex_id: int) -> PID:
         self.semaphore_p(self.mutexes[mutex_id].semaphore)
-        return self.running.pid 
+        return self.running.pid
 
 
     # This method is triggered when the currently running process calls unlock() on an existing mutex.
     # DO NOT rename or delete this method. DO NOT change its arguments.
     def syscall_mutex_unlock(self, mutex_id: int) -> PID:
         self.semaphore_v(self.mutexes[mutex_id].semaphore)
-        return self.running.pid 
+        return self.running.pid
 
     # This function represents the hardware timer intterupt.
     # It is triggered every 10 microseconds and is the only way a kernel can track passing time.
@@ -303,41 +353,44 @@ class Kernel:
             if self.active_queue_num_ticks >= ACTIVE_QUEUE_NUM_TICKS:
                 self.switch_active_queue()
             self.choose_next_process()
-        return self.running.pid 
-    
+        return self.running.pid
+
+
 # This class represents the MMU of the simulation.
 # The simulator will create an instance of this object and use it to translate memory accesses.
 # DO NOT modify the name of this class or remove it.
 class MMU:
+    memory: Memory
     # Called before the simulation begins (even before kernel __init__).
     # Use this function to initilize any variables you need throughout the simulation.
     # DO NOT rename or delete this method. DO NOT change its arguments.
     def __init__(self, logger):
         self.logger = logger
-        # memory implementation?
-        # list of bounds, 0 is implied, max amount of memory is first segment
-        self.memory_list: list[int] = [10485760]
-
-    def find_memory_space(self, item: int):
-        pass
-
-    def is_valid_address(self, address: int, pid: PID):
-        pass
 
     # Translate the virtual address to its physical address.
     # If it is not a valid address for the given process, return None which will cause a segmentation fault.
     # DO NOT rename or delete this method. DO NOT change its arguments.
     def translate(self, address: int, pid: PID) -> int | None:
-        self.logger.log(f"{address}, {pid}")
-        return None
+        start, size = self.memory.search(pid)
+        if start == -1:
+            return None
 
+        if address < VIRTUAL_BASE:
+            return None
+
+        offset = address - VIRTUAL_BASE
+
+        if offset < 0 or offset >= size:
+            return None
+
+        return start + offset
 def exceeded_quantum(pcb: PCB) -> bool:
     if pcb.num_quantum_ticks >= RR_QUANTUM_TICKS:
         pcb.num_quantum_ticks = 0
         return True
     else:
         return False
-    
+
 def pop_min_priority(pcbs: list[PCB]) -> PCB:
     min_index = 0
     for i in range(1, len(pcbs)):
