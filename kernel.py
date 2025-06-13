@@ -1,4 +1,4 @@
-### Fill in the following information before submitting
+# Fill in the following information before submitting
 # Group id: 2
 # Members: Nathan Andrews, Drake Smith, Aditya Chakka
 
@@ -13,6 +13,8 @@ FOREGROUND: str = "Foreground"
 
 # This class represents the PCB of processes.
 # It is only here for your convinience and can be modified however you see fit.
+
+
 class PCB:
     pid: PID
     priority: int
@@ -31,10 +33,12 @@ class PCB:
     def __repr__(self):
         return f"({self.pid}, {self.priority})"
 
+
 @dataclass
 class Semaphore:
     value: int
     waiting: deque[PCB]
+
 
 class Mutex:
     semaphore: Semaphore
@@ -42,6 +46,7 @@ class Mutex:
     def __init__(self):
         # A mutex is essentially a semaphore with a value of 1
         self.semaphore = Semaphore(1, deque())
+
 
 class Segment:
     def __init__(self, start: int, size: int, pid: int | None = None):
@@ -56,24 +61,44 @@ class Segment:
         status = 'Free' if self.is_free() else f'PID={self.pid}'
         return f'[{self.start}-{self.start + self.size - 1} | {self.size} | {status}]'
 
+
 class Memory:
     def __init__(self, logger, total_size: int):
         self.logger = logger
-        self.segments: list[Segment] = [Segment(10485760, total_size)]
+        # total_size is already in bytes
+        # Start at 10MB (in bytes), available size is remaining memory (in bytes)
+        start_address = 10 * 1024 * 1024  # 10MB in bytes
+        available_size = total_size - \
+            (10 * 1024 * 1024)  # Subtract 10MB from total
+        self.segments: list[Segment] = [Segment(start_address, available_size)]
 
-    # best fit allocation
     def allocate(self, pid: int, size: int):
+        # size is already in bytes, no conversion needed
         best_segment: Segment | None = None
-        for segment in self.segments:
+        best_index = -1
+        # for i, seg in enumerate(self.segments):
+        #     print(f"  {i}: {seg}")
+
+        for i, segment in enumerate(self.segments):
             if segment.is_free() and segment.size >= size:
-                if best_segment is None or segment.size < best_segment.size:
+                if best_segment is None:
                     best_segment = segment
+                    best_index = i
+                elif segment.size < best_segment.size:
+                    best_segment = segment
+                    best_index = i
+                elif segment.size == best_segment.size and segment.start < best_segment.start:
+                    best_segment = segment
+                    best_index = i
+
         if best_segment is None:
-            # self.logger.log(f"No suitable segment for PID {pid}")
             return False
+
         if best_segment.size > size:
-            new_block = Segment(best_segment.start + size, best_segment.size - size)
-            self.segments.insert(self.segments.index(best_segment) + 1, new_block)
+            new_start = best_segment.start + size
+            new_block = Segment(new_start, best_segment.size - size)
+            self.segments.insert(best_index + 1, new_block)
+
         best_segment.size = size
         best_segment.pid = pid
         return True
@@ -87,23 +112,26 @@ class Memory:
     def coalesce(self):
         i = 0
         while i < len(self.segments) - 1:
-            if self.segments[i].is_free() and self.segments[i+1].is_free():
-                self.segments[i].size += self.segments[i+1].size
-                del self.segments[i+1]
+            current = self.segments[i]
+            next_seg = self.segments[i + 1]
+            if (current.is_free() and next_seg.is_free() and
+                    current.start + current.size == next_seg.start):
+                current.size += next_seg.size
+                del self.segments[i + 1]
             else:
                 i += 1
-    
+
     def search(self, pid: int):
         for segment in self.segments:
             if segment.pid == pid:
-                # self.logger.log(f"{segment.start}, {segment.size}")
-                return segment.start, segment.size
+                return segment.start, segment.size  # Both in bytes
         return None, None
 
     def show(self):
         self.logger.log("Memory Layout:")
         for segment in self.segments:
             self.logger.log(f"  {segment}")
+
 
 RR_QUANTUM_TICKS: int = 4
 ACTIVE_QUEUE_NUM_TICKS: int = 20
@@ -118,6 +146,8 @@ VIRTUAL_BASE = 0X20000000
 # This class represents the Kernel of the simulation.
 # The simulator will create an instance of this object and use it to respond to syscalls and interrupts.
 # DO NOT modify the name of this class or remove it.
+
+
 class Kernel:
     scheduling_algorithm: str
     ready_queue: deque[PCB]
@@ -147,7 +177,7 @@ class Kernel:
         self.rr_ready_queue = deque()
         self.active_queue = FOREGROUND
         self.active_queue_num_ticks = 0
-        
+
         self.memory_size = memory_size
         self.mmu = mmu
         self.mmu.memory = Memory(self.logger, memory_size)
@@ -159,20 +189,23 @@ class Kernel:
     def new_process_arrived(self, new_process: PID, priority: int, process_type: str, memory_needed: int) -> PID:
         if self.mmu.memory.allocate(new_process, memory_needed):
             self.ready_queue.append(PCB(new_process, priority, process_type))
+            # Neither queue was active, so when a process arrives, it is the start of a new queue
+            if self.scheduling_algorithm == MULTILEVEL and self.running is self.idle_pcb:
+                self.active_queue_num_ticks = 0
+            self.choose_next_process()
+            return self.running.pid
         else:
+            # Process should be dropped - don't call choose_next_process
             return -1
-        # Neither queue was active, so when a process arrives, it is the start of a new queue
-        if self.scheduling_algorithm == MULTILEVEL and self.running is self.idle_pcb:
-            self.active_queue_num_ticks = 0
-        self.choose_next_process()
-        return self.running.pid
 
     # This function is triggered every time the current process performs an exit syscall.
     # DO NOT rename or delete this method. DO NOT change its arguments.
+
     def syscall_exit(self) -> PID:
-        
-        self.mmu.memory.free(self.running.pid)
-        
+
+        if self.running.pid != 0:  # Don't free idle process memory
+            self.mmu.memory.free(self.running.pid)
+
         self.running = self.idle_pcb
         self.choose_next_process()
         return self.running.pid
@@ -184,10 +217,10 @@ class Kernel:
         self.choose_next_process()
         return self.running.pid
 
-
     # This is where you can select the next process to run.
     # This function is not directly called by the simulator and is purely for your convinience.
     # It is not required to actually use this function but it is recommended.
+
     def choose_next_process(self):
         if self.scheduling_algorithm == FCFS:
             self.fcfs_chose_next_process(self.ready_queue)
@@ -198,7 +231,7 @@ class Kernel:
             if self.running is not self.idle_pcb:
                 self.ready_queue.append(self.running)
 
-            next_process = pop_min_priority(self.ready_queue) # type: ignore
+            next_process = pop_min_priority(self.ready_queue)  # type: ignore
             self.running = next_process
         elif self.scheduling_algorithm == RR:
             self.rr_chose_next_process(self.ready_queue)
@@ -250,7 +283,7 @@ class Kernel:
 
         if self.running is self.idle_pcb:
             # Lower pid was the first to arrive
-            self.running = pop_min_pid(queue) # type: ignore
+            self.running = pop_min_pid(queue)  # type: ignore
 
     def switch_active_queue(self):
         # Reset the number of ticks with the active queue
@@ -297,9 +330,10 @@ class Kernel:
             to_be_released = None
 
             if self.scheduling_algorithm == PRIORITY:
-                to_be_released = pop_min_priority(semaphore.waiting) # type: ignore
+                to_be_released = pop_min_priority(
+                    semaphore.waiting)  # type: ignore
             else:
-                to_be_released = pop_min_pid(semaphore.waiting) # type: ignore
+                to_be_released = pop_min_pid(semaphore.waiting)  # type: ignore
 
             self.ready_queue.append(to_be_released)
             to_be_released.num_quantum_ticks = 0
@@ -336,9 +370,9 @@ class Kernel:
         self.semaphore_p(self.mutexes[mutex_id].semaphore)
         return self.running.pid
 
-
     # This method is triggered when the currently running process calls unlock() on an existing mutex.
     # DO NOT rename or delete this method. DO NOT change its arguments.
+
     def syscall_mutex_unlock(self, mutex_id: int) -> PID:
         self.semaphore_v(self.mutexes[mutex_id].semaphore)
         return self.running.pid
@@ -367,6 +401,7 @@ class MMU:
     # Called before the simulation begins (even before kernel __init__).
     # Use this function to initilize any variables you need throughout the simulation.
     # DO NOT rename or delete this method. DO NOT change its arguments.
+
     def __init__(self, logger):
         self.logger = logger
 
@@ -374,26 +409,25 @@ class MMU:
     # If it is not a valid address for the given process, return None which will cause a segmentation fault.
     # DO NOT rename or delete this method. DO NOT change its arguments.
     def translate(self, address: int, pid: PID) -> int | None:
-        start, size = self.memory.search(pid) # in megabytes
+        start, size = self.memory.search(pid)
         if start is None or size is None:
             return None
-
         if address < VIRTUAL_BASE:
             return None
-
         offset = address - VIRTUAL_BASE
-
         if offset < 0 or offset >= size:
             return None
+        result = start + offset
+        return result
 
-        return start + offset
-    
+
 def exceeded_quantum(pcb: PCB) -> bool:
     if pcb.num_quantum_ticks >= RR_QUANTUM_TICKS:
         pcb.num_quantum_ticks = 0
         return True
     else:
         return False
+
 
 def pop_min_priority(pcbs: list[PCB]) -> PCB:
     min_index = 0
@@ -406,6 +440,7 @@ def pop_min_priority(pcbs: list[PCB]) -> PCB:
     popped = pcbs[min_index]
     del pcbs[min_index]
     return popped
+
 
 def pop_min_pid(pcbs: list[PCB]):
     lowest_pid_i = 0
